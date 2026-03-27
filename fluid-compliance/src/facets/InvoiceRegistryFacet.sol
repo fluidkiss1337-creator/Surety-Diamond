@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {LibAppStorage} from "../libraries/LibAppStorage.sol";
+import {LibAppStorage, SystemPaused} from "../libraries/LibAppStorage.sol";
 import {LibRoles} from "../libraries/LibRoles.sol";
 import {IInvoiceRegistryFacet} from "../interfaces/IInvoiceRegistryFacet.sol";
 
@@ -30,11 +30,12 @@ contract InvoiceRegistryFacet is IInvoiceRegistryFacet {
     error InvoiceNotVerified();
     error InvalidAdvanceRate();
     error PaymentExceedsInvoice();
+    error ZeroAddress();
 
     // ============ Modifiers ============
 
     modifier whenNotPaused() {
-        require(!LibAppStorage.isPaused(), "System paused");
+        if (LibAppStorage.isPaused()) revert SystemPaused();
         _;
     }
 
@@ -57,6 +58,7 @@ contract InvoiceRegistryFacet is IInvoiceRegistryFacet {
     ) external whenNotPaused onlySeller returns (bytes32 invoiceHash) {
         LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
 
+        if (invoice.seller == address(0) || invoice.buyer == address(0)) revert ZeroAddress();
         if (invoice.amount == 0 || invoice.amount > MAX_INVOICE_AMOUNT) revert InvalidInvoiceData();
         if (invoice.dueDate <= invoice.issueDate) revert InvalidInvoiceData();
         if (invoice.seller != msg.sender) revert UnauthorizedSeller();
@@ -142,10 +144,6 @@ contract InvoiceRegistryFacet is IInvoiceRegistryFacet {
         LibAppStorage.InvoiceRecord storage invoice = s.invoices[invoiceHash];
         if (invoice.invoiceHash == bytes32(0)) revert InvoiceNotFound();
         if (invoice.status != LibAppStorage.InvoiceStatus.VERIFIED) revert InvoiceNotVerified();
-        if (invoice.status == LibAppStorage.InvoiceStatus.FACTORED) {
-            emit DoubleFactoringAttempt(invoiceHash, msg.sender, address(0), block.timestamp);
-            revert InvoiceAlreadyFactored();
-        }
 
         uint256 advanceAmount = (invoice.amount * advanceRate) / 10000;
         agreementId = keccak256(abi.encodePacked(invoiceHash, factor, advanceAmount, block.timestamp));

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {LibAppStorage} from "../libraries/LibAppStorage.sol";
+import {LibAppStorage, SystemPaused} from "../libraries/LibAppStorage.sol";
 import {LibRoles} from "../libraries/LibRoles.sol";
 import {IKYCFacet} from "../interfaces/IKYCFacet.sol";
 
@@ -20,11 +20,12 @@ contract KYCFacet is IKYCFacet {
     error KYCExpired();
     error InvalidVerifier();
     error DocumentVerificationFailed();
+    error ZeroAddress();
 
     // ============ Modifiers ============
 
     modifier whenNotPaused() {
-        require(!LibAppStorage.isPaused(), "System paused");
+        if (LibAppStorage.isPaused()) revert SystemPaused();
         _;
     }
 
@@ -42,6 +43,7 @@ contract KYCFacet is IKYCFacet {
         LibAppStorage.KYCLevel level,
         bytes32 jurisdictionId
     ) external whenNotPaused {
+        if (entity == address(0)) revert ZeroAddress();
         LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
 
         if (s.kycRecords[entity].status == LibAppStorage.KYCStatus.APPROVED) {
@@ -54,7 +56,7 @@ contract KYCFacet is IKYCFacet {
 
         s.kycRecords[entity] = LibAppStorage.KYCRecord({
             identityHash: identityHash,
-            level: LibAppStorage.KYCLevel.NONE,
+            level: level,
             status: LibAppStorage.KYCStatus.PENDING,
             verificationDate: 0,
             expirationDate: 0,

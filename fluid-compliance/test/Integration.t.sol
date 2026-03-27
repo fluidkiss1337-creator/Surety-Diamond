@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {DiamondTestHelper} from "./helpers/DiamondTestHelper.sol";
 import {EmergencyFacet} from "../src/facets/EmergencyFacet.sol";
-import {LibAppStorage} from "../src/libraries/LibAppStorage.sol";
+import {LibAppStorage, SystemPaused} from "../src/libraries/LibAppStorage.sol";
 
 /// @notice End-to-end integration test for the core supply chain finance compliance flow:
 ///   KYC → AML Risk Assessment → Sanctions Screening → Invoice Registration →
@@ -120,12 +120,12 @@ contract IntegrationTest is DiamondTestHelper {
 
         // KYC registration now blocked
         vm.prank(buyer);
-        vm.expectRevert("System paused");
+        vm.expectRevert(SystemPaused.selector);
         kyc().initiateKYC(buyer, keccak256("buyer-id"), LibAppStorage.KYCLevel.BASIC, keccak256("US"));
 
         // AML blocked
         vm.prank(analyst);
-        vm.expectRevert("System paused");
+        vm.expectRevert(SystemPaused.selector);
         aml().assessTransaction(
             keccak256("tx"), seller, buyer, 1000 * 1e18, keccak256("USD"), keccak256("TEST")
         );

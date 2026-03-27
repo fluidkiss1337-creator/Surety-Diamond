@@ -17,6 +17,7 @@ contract DiamondCutFacet is IDiamondCut {
     error TimelockNotExpired(uint256 executeAfter, uint256 currentTime);
     error UpgradeNotScheduled();
     error UpgradeAlreadyExecuted();
+    error DelayTooShort(uint256 provided, uint256 minimum);
 
     struct ScheduledCut {
         FacetCut[] cuts;
@@ -31,6 +32,11 @@ contract DiamondCutFacet is IDiamondCut {
     // ============ Schedule ============
 
     /// @notice Schedule a diamond upgrade subject to the timelock
+    /// @param _diamondCut Array of facet cuts to apply when executed
+    /// @param _init Optional initializer address (address(0) to skip)
+    /// @param _calldata Calldata for the initializer
+    /// @param _delay Seconds to wait before the upgrade can be executed (minimum MIN_TIMELOCK)
+    /// @return upgradeId Unique identifier for this scheduled upgrade
     function scheduleDiamondCut(
         FacetCut[] calldata _diamondCut,
         address _init,
@@ -38,7 +44,7 @@ contract DiamondCutFacet is IDiamondCut {
         uint256 _delay
     ) external returns (bytes32 upgradeId) {
         LibDiamond.enforceIsContractOwner();
-        require(_delay >= MIN_TIMELOCK, "DiamondCutFacet: delay too short");
+        if (_delay < MIN_TIMELOCK) revert DelayTooShort(_delay, MIN_TIMELOCK);
 
         upgradeId = keccak256(abi.encode(_diamondCut, _init, _calldata, block.timestamp));
         ScheduledCut storage sc = scheduledCuts[upgradeId];
@@ -53,7 +59,8 @@ contract DiamondCutFacet is IDiamondCut {
 
     // ============ Execute ============
 
-    /// @notice Execute a previously scheduled upgrade after timelock expires
+    /// @notice Execute a previously scheduled upgrade after the timelock expires
+    /// @param upgradeId The identifier returned by scheduleDiamondCut
     function executeDiamondCut(bytes32 upgradeId) external {
         LibDiamond.enforceIsContractOwner();
         ScheduledCut storage sc = scheduledCuts[upgradeId];
@@ -70,7 +77,10 @@ contract DiamondCutFacet is IDiamondCut {
 
     // ============ IDiamondCut ============
 
-    /// @notice Direct cut - bypasses timelock. Only for initial deployment via DiamondInit.
+    /// @notice Direct cut — bypasses timelock. Intended for initial deployment only.
+    /// @param _diamondCut Array of facet cuts to apply immediately
+    /// @param _init Optional initializer address (address(0) to skip)
+    /// @param _calldata Calldata for the initializer
     function diamondCut(
         FacetCut[] calldata _diamondCut,
         address _init,

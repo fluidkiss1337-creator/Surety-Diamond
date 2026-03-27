@@ -1312,4 +1312,4 @@ contract DeploySurety is Script {
    - Slither/Mythril static analysis
    - External audit engagement
 
-The Surety compliance diamond now provides a robust foundation for PrimeRevenue's supply chain finance operations, with modular architecture enabling continuous regulatory adaptation while maintaining immutable audit trails and preventing critical fraud vectors like double factoring.
+The Surety compliance diamond now provides a robust foundation for enterprise supply chain finance operations, with modular architecture enabling continuous regulatory adaptation while maintaining immutable audit trails and preventing critical fraud vectors like double factoring.

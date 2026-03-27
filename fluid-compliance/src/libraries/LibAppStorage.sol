@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+/// @notice Reverted when a state-changing call is made while the system is paused
+error SystemPaused();
+
 /// @title LibAppStorage
 /// @author Surety Compliance System
 /// @notice Central storage management for the Surety compliance diamond
@@ -379,6 +382,7 @@ library LibAppStorage {
     // ============================================================
 
     /// @notice Get the AppStorage pointer at the deterministic slot
+    /// @return s The AppStorage struct stored at STORAGE_POSITION
     function appStorage() internal pure returns (AppStorage storage s) {
         bytes32 position = STORAGE_POSITION;
         assembly {
@@ -387,6 +391,7 @@ library LibAppStorage {
     }
 
     /// @notice Check if the system is paused
+    /// @return True if the system pause flag is set
     function isPaused() internal view returns (bool) {
         return appStorage().systemPaused;
     }

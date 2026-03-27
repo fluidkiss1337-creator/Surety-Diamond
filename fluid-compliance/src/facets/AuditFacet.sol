@@ -125,7 +125,10 @@ contract AuditFacet is IAuditFacet {
     // Public Typed Logging Functions
     // ============================================================
 
-    /// @notice Log a KYC-related audit event
+    /// @notice Log a KYC-related audit event (reverts if eventType is not a KYC type)
+    /// @param entity The subject address of the KYC event
+    /// @param eventType Must be a KYC_* AuditEventType value
+    /// @param dataHash Arbitrary data hash to attach to the entry
     function logKYCEvent(
         address entity,
         LibAppStorage.AuditEventType eventType,
@@ -135,7 +138,10 @@ contract AuditFacet is IAuditFacet {
         _logAuditInternal(eventType, entity, dataHash);
     }
 
-    /// @notice Log an AML-related audit event
+    /// @notice Log an AML-related audit event (reverts if eventType is not an AML type)
+    /// @param entity The subject address of the AML event
+    /// @param eventType Must be an AML_* AuditEventType value
+    /// @param dataHash Arbitrary data hash to attach to the entry
     function logAMLEvent(
         address entity,
         LibAppStorage.AuditEventType eventType,
@@ -145,7 +151,10 @@ contract AuditFacet is IAuditFacet {
         _logAuditInternal(eventType, entity, dataHash);
     }
 
-    /// @notice Log a sanctions-related audit event
+    /// @notice Log a sanctions-related audit event (reverts if eventType is not a sanctions type)
+    /// @param entity The subject address of the sanctions event
+    /// @param eventType Must be a SANCTIONS_* AuditEventType value
+    /// @param dataHash Arbitrary data hash to attach to the entry
     function logSanctionsEvent(
         address entity,
         LibAppStorage.AuditEventType eventType,

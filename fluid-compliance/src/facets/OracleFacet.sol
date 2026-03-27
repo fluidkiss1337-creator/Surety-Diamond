@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {LibAppStorage} from "../libraries/LibAppStorage.sol";
+import {LibAppStorage, SystemPaused} from "../libraries/LibAppStorage.sol";
 import {LibRoles} from "../libraries/LibRoles.sol";
 import {IOracleFacet} from "../interfaces/IOracleFacet.sol";
 
@@ -31,13 +31,14 @@ contract OracleFacet is IOracleFacet {
     error InvalidSignature();
     error TooManyOracles();
     error OracleNotRegistered();
+    error ZeroAddress();
 
     // ============================================================
     // Modifiers
     // ============================================================
 
     modifier whenNotPaused() {
-        require(!LibAppStorage.isPaused(), "System paused");
+        if (LibAppStorage.isPaused()) revert SystemPaused();
         _;
     }
 
@@ -60,6 +61,7 @@ contract OracleFacet is IOracleFacet {
         address oracle,
         LibAppStorage.OracleDataType[] calldata authorizedTypes
     ) external whenNotPaused onlyAdmin {
+        if (oracle == address(0)) revert ZeroAddress();
         LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
         if (s.oracleActive[oracle]) revert OracleAlreadyRegistered();
 
@@ -169,7 +171,11 @@ contract OracleFacet is IOracleFacet {
     // Internal
     // ============================================================
 
-    /// @notice Check if oracle is authorised for a specific data type
+    /// @notice Check if an oracle is authorised for a specific data type
+    /// @param s AppStorage reference
+    /// @param oracle The oracle address to check
+    /// @param dataType The data type to verify authorisation for
+    /// @return True if the oracle is active and authorised for the given data type
     function _isAuthorizedForType(
         LibAppStorage.AppStorage storage s,
         address oracle,
@@ -186,6 +192,9 @@ contract OracleFacet is IOracleFacet {
     }
 
     /// @notice Update the Merkle root for a sanctions list via oracle feed
+    /// @param s AppStorage reference
+    /// @param dataKey Encoded SanctionsList enum value identifying the list to update
+    /// @param dataValue ABI-encoded bytes32 Merkle root for the sanctions list
     function _processSanctionsUpdate(
         LibAppStorage.AppStorage storage s,
         bytes32 dataKey,
@@ -198,6 +207,10 @@ contract OracleFacet is IOracleFacet {
     }
 
     /// @notice Recover signer from an Ethereum-prefixed message hash
+    /// @param messageHash The raw keccak256 hash of the signed data
+    /// @param signature 65-byte ECDSA signature (r, s, v)
+    /// @param expectedSigner Address expected to have produced the signature
+    /// @return True if the recovered signer matches expectedSigner and is non-zero
     function _verifySignature(
         bytes32 messageHash,
         bytes memory signature,

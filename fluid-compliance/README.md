@@ -1,6 +1,10 @@
 # Surety — On-Chain Compliance Diamond
 
-Surety is the compliance engine for [PrimeRevenue](https://www.primerevenue.com/), the world's largest supply chain finance platform (~$300B annual payment volume, 80+ countries). It implements the **EIP-2535 Diamond Standard** to deliver modular, upgradeable on-chain KYC, AML, sanctions screening, invoice registry, FATCA/CRS reporting, and multi-jurisdiction routing.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE)
+[![Solidity](https://img.shields.io/badge/Solidity-0.8.24-blue.svg)](https://soliditylang.org)
+[![EIP-2535](https://img.shields.io/badge/EIP--2535-Diamond-purple.svg)](https://eips.ethereum.org/EIPS/eip-2535)
+
+Surety is a production-grade compliance engine for enterprise supply chain finance (SCF) platforms operating across multiple jurisdictions. It implements the **EIP-2535 Diamond Standard** to deliver modular, upgradeable on-chain KYC, AML, sanctions screening, invoice registry, FATCA/CRS reporting, and multi-jurisdiction routing.
 
 ---
 
@@ -205,3 +209,11 @@ Key test files:
 - `docs/Surety Deployment Guide.md` — API reference and deployment walkthrough
 - `../../compliance-facets-specification.md` — Complete feature specification (52KB)
 - [EIP-2535 Diamond Standard](https://eips.ethereum.org/EIPS/eip-2535)
+
+---
+
+## Custom EIP-2535 Diamond Contracts
+
+Available for consultation, architecture, creation, testing, and implementation (onboarding) of custom EIP-2535 Diamond Standard contract systems.
+
+**Contact:** fluidkiss1337@gmail.com

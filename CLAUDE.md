@@ -6,7 +6,7 @@ This file provides context for AI assistants (Claude and others) working in this
 
 ## Project Overview
 
-**Fluid-Innovation / Surety** is a modular, upgradeable smart contract system implementing EIP-2535 Diamond Standard for financial compliance. It is built for **PrimeRevenue**, a global supply chain finance platform operating across 80+ countries with ~$300B annual payment volume.
+**Fluid-Innovation / Surety** is a modular, upgradeable smart contract system implementing EIP-2535 Diamond Standard for financial compliance. It is designed for enterprise supply chain finance (SCF) platforms operating across multiple jurisdictions with high-volume payment flows.
 
 The system provides on-chain compliance infrastructure: KYC, AML, sanctions screening, invoice registry, FATCA/CRS reporting, multi-jurisdiction routing, and audit logging.
 
@@ -272,3 +272,9 @@ See `docs/Surety-current-state.md` for the full handoff document. Key gaps as of
 - `fluid-compliance/Surety Deployment Guide.md` — Full API reference and deployment steps
 - `docs/Surety-current-state.md` — Current state handoff (most recent)
 - `nikosys-IComplianceDiamond.txt` — Upstream interface reference
+
+---
+
+## Contact
+
+For custom EIP-2535 Diamond contract work (consultation, architecture, creation, testing, implementation): **fluidkiss1337@gmail.com**

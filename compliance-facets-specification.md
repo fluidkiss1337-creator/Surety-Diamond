@@ -1,12 +1,12 @@
 # Compliance Facets Specification for Global Supply Chain Finance
 
-## Target Customer: PrimeRevenue (Atlanta, GA, USA)
+## Target Platform: Enterprise Supply Chain Finance
 
 ---
 
 ## Executive Summary
 
-This specification defines a comprehensive suite of EIP-2535 Diamond Standard compliance facets designed for global supply chain finance (SCF) operations. The target customer, **PrimeRevenue**, is a leading provider of working capital and B2B payment solutions operating in 80+ countries, processing over $300 billion in annual payment transactions across 30+ currencies.
+This specification defines a comprehensive suite of EIP-2535 Diamond Standard compliance facets designed for global supply chain finance (SCF) operations. The target platform is an enterprise provider of working capital and B2B payment solutions operating in 80+ countries, processing high volumes of payment transactions across 30+ currencies.
 
 The compliance facets address the critical regulatory requirements for:
 
@@ -21,9 +21,9 @@ The compliance facets address the critical regulatory requirements for:
 
 ## 1.0 Business Context and Requirements
 
-### 1.1 PrimeRevenue Platform Overview
+### 1.1 SCF Platform Overview
 
-PrimeRevenue's core services include:
+Core services include:
 
 - **Supply Chain Finance (Reverse Factoring)**: Buyers extend payment terms while suppliers receive early payment
 - **Dynamic Discounting**: Early payment in exchange for negotiated discounts
@@ -114,7 +114,7 @@ pragma solidity ^0.8.24;
 /// @title LibAppStorage - Central storage for compliance diamond
 /// @notice All facets share this storage layout via delegatecall
 library LibAppStorage {
-    bytes32 constant STORAGE_POSITION = keccak256("primerevenue.compliance.diamond.storage");
+    bytes32 constant STORAGE_POSITION = keccak256("surety.compliance.diamond.storage");
     
     struct AppStorage {
         // === KYC Storage ===
@@ -219,7 +219,7 @@ struct KYCRecord {
 pragma solidity ^0.8.24;
 
 /// @title IKYCFacet - KYC verification and management
-/// @author PrimeRevenue Compliance Team
+/// @author Surety Compliance Team
 /// @notice Handles all KYC-related operations for supply chain finance participants
 interface IKYCFacet {
     
@@ -1584,7 +1584,7 @@ interface IEmergencyFacet {
 
 1. **Storage Layout Review**: Confirm AppStorage structure meets all facet requirements
 2. **Interface Finalization**: Review and approve all interface definitions
-3. **Access Control Matrix**: Validate role-function mappings with PrimeRevenue compliance team
+3. **Access Control Matrix**: Validate role-function mappings with your compliance team
 4. **Oracle Selection**: Identify trusted data providers for sanctions/KYC verification
 5. **Legal Review**: Ensure on-chain data storage complies with GDPR and data residency requirements
 
@@ -1600,4 +1600,4 @@ interface IEmergencyFacet {
 
 *Document Version: 1.0*  
 *Last Updated: December 2, 2025*  
-*Classification: Confidential - PrimeRevenue*
+*Classification: Open Source — MIT License*

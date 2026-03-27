@@ -11,6 +11,9 @@ import {LibDiamond} from "../libraries/LibDiamond.sol";
 ///      It runs once and should not be callable again. Storage is the diamond's storage.
 contract DiamondInit {
 
+    error AlreadyInitialized();
+    error TimelockTooShort();
+
     struct InitArgs {
         address owner;
         address treasury;
@@ -24,8 +27,8 @@ contract DiamondInit {
         LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
 
         // Guard against re-initialization
-        require(s.timelockDuration == 0, "DiamondInit: already initialized");
-        require(args.timelockDuration >= 48 hours, "DiamondInit: timelock too short");
+        if (s.timelockDuration != 0) revert AlreadyInitialized();
+        if (args.timelockDuration < 48 hours) revert TimelockTooShort();
 
         // System configuration
         s.timelockDuration     = args.timelockDuration;

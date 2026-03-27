@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {LibAppStorage} from "../libraries/LibAppStorage.sol";
+import {LibAppStorage, SystemPaused} from "../libraries/LibAppStorage.sol";
 import {LibRoles} from "../libraries/LibRoles.sol";
 import {IJurisdictionFacet} from "../interfaces/IJurisdictionFacet.sol";
 
@@ -21,13 +21,14 @@ contract JurisdictionFacet is IJurisdictionFacet {
     error TransactionNotPermitted();
     error JurisdictionBlocked();
     error ExceedsTransactionLimit();
+    error ZeroAddress();
 
     // ============================================================
     // Modifiers
     // ============================================================
 
     modifier whenNotPaused() {
-        require(!LibAppStorage.isPaused(), "System paused");
+        if (LibAppStorage.isPaused()) revert SystemPaused();
         _;
     }
 
@@ -60,6 +61,7 @@ contract JurisdictionFacet is IJurisdictionFacet {
         address entity,
         bytes32 jurisdictionId
     ) external whenNotPaused onlyComplianceOfficer {
+        if (entity == address(0)) revert ZeroAddress();
         LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
         if (!s.jurisdictionConfigs[jurisdictionId].isActive) revert JurisdictionNotFound();
         s.entityJurisdictions[entity] = jurisdictionId;
