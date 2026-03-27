@@ -8,31 +8,41 @@ import {IAuditFacet} from "../interfaces/IAuditFacet.sol";
 /// @title AuditFacet
 /// @author Surety Compliance System
 /// @notice Immutable audit logging for regulatory compliance
-/// @dev Implements hash-chained audit trail with tamper detection
+/// @dev Implements hash-chained audit trail with tamper detection.
+///      All entries are written to LibAppStorage for cross-facet access.
 contract AuditFacet is IAuditFacet {
-    using LibAppStorage for LibAppStorage.AppStorage;
 
-    // ============ Errors ============
+    // ============================================================
+    // Errors
+    // ============================================================
 
     error InvalidAuditEntry();
     error AuditChainBroken();
     error UnauthorizedAuditor();
+    error InvalidKYCEventType();
+    error InvalidAMLEventType();
+    error InvalidSanctionsEventType();
 
-    // ============ Modifiers ============
+    // ============================================================
+    // Modifiers
+    // ============================================================
 
     modifier onlyAuditor() {
         LibRoles.checkRole(LibRoles.AUDITOR_ROLE);
         _;
     }
 
-    // ============ Core Functions ============
+    // ============================================================
+    // Core Functions
+    // ============================================================
 
     /// @inheritdoc IAuditFacet
+    /// @dev Access is gated by AUDITOR_ROLE; internal facets call _logAuditInternal directly.
     function logAudit(
-        AuditEventType eventType,
+        LibAppStorage.AuditEventType eventType,
         address subject,
         bytes32 dataHash
-    ) external returns (bytes32 entryId) {
+    ) external onlyAuditor returns (bytes32 entryId) {
         return _logAuditInternal(eventType, subject, dataHash);
     }
 
@@ -54,56 +64,103 @@ contract AuditFacet is IAuditFacet {
         return current == endEntry;
     }
 
-    // ============ View Functions ============
+    // ============================================================
+    // View Functions
+    // ============================================================
+
+    /// @inheritdoc IAuditFacet
+    function getAuditEntry(bytes32 entryId) external view returns (LibAppStorage.AuditEntry memory entry) {
+        entry = LibAppStorage.appStorage().auditEntries[entryId];
+    }
+
+    /// @inheritdoc IAuditFacet
+    function getEntityAuditTrail(
+        address entity,
+        LibAppStorage.AuditEventType eventType,
+        uint256 fromTimestamp,
+        uint256 toTimestamp
+    ) external view returns (LibAppStorage.AuditEntry[] memory entries) {
+        LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
+        bytes32[] memory ids = s.entityAuditIds[entity];
+
+        // Two-pass: count then fill, to avoid dynamic array resizing
+        uint256 count = 0;
+        for (uint256 i = 0; i < ids.length; i++) {
+            LibAppStorage.AuditEntry memory e = s.auditEntries[ids[i]];
+            if (
+                e.eventType == eventType &&
+                e.timestamp >= fromTimestamp &&
+                (toTimestamp == 0 || e.timestamp <= toTimestamp)
+            ) count++;
+        }
+
+        entries = new LibAppStorage.AuditEntry[](count);
+        uint256 idx = 0;
+        for (uint256 i = 0; i < ids.length; i++) {
+            LibAppStorage.AuditEntry memory e = s.auditEntries[ids[i]];
+            if (
+                e.eventType == eventType &&
+                e.timestamp >= fromTimestamp &&
+                (toTimestamp == 0 || e.timestamp <= toTimestamp)
+            ) {
+                entries[idx++] = e;
+            }
+        }
+    }
 
     /// @inheritdoc IAuditFacet
     function getLatestAuditHash() external view returns (bytes32 hash) {
-        LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
-        hash = s.latestAuditHash;
+        hash = LibAppStorage.appStorage().latestAuditHash;
     }
 
     /// @inheritdoc IAuditFacet
     function getAuditStats(
-        AuditEventType eventType,
+        LibAppStorage.AuditEventType eventType,
         uint256 period
     ) external view returns (uint256 count) {
-        LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
-        count = s.totalAuditEntries;
+        count = LibAppStorage.appStorage().totalAuditEntries;
     }
 
-    // ============ Public Logging Functions ============
+    // ============================================================
+    // Public Typed Logging Functions
+    // ============================================================
 
     /// @notice Log a KYC-related audit event
     function logKYCEvent(
         address entity,
-        AuditEventType eventType,
+        LibAppStorage.AuditEventType eventType,
         bytes32 dataHash
     ) external {
+        _requireKYCEventType(eventType);
         _logAuditInternal(eventType, entity, dataHash);
     }
 
     /// @notice Log an AML-related audit event
     function logAMLEvent(
         address entity,
-        AuditEventType eventType,
+        LibAppStorage.AuditEventType eventType,
         bytes32 dataHash
     ) external {
+        _requireAMLEventType(eventType);
         _logAuditInternal(eventType, entity, dataHash);
     }
 
     /// @notice Log a sanctions-related audit event
     function logSanctionsEvent(
         address entity,
-        AuditEventType eventType,
+        LibAppStorage.AuditEventType eventType,
         bytes32 dataHash
     ) external {
+        _requireSanctionsEventType(eventType);
         _logAuditInternal(eventType, entity, dataHash);
     }
 
-    // ============ Internal Functions ============
+    // ============================================================
+    // Internal
+    // ============================================================
 
     function _logAuditInternal(
-        AuditEventType eventType,
+        LibAppStorage.AuditEventType eventType,
         address subject,
         bytes32 dataHash
     ) internal returns (bytes32 entryId) {
@@ -116,11 +173,49 @@ contract AuditFacet is IAuditFacet {
         bytes32 previousHash = s.latestAuditHash;
         bytes32 newHash = keccak256(abi.encodePacked(entryId, previousHash, block.timestamp));
 
+        // Hash chain update
         s.auditChain[previousHash] = newHash;
         s.latestAuditHash = newHash;
         s.totalAuditEntries++;
 
+        // Persist full entry for retrieval
+        s.auditEntries[entryId] = LibAppStorage.AuditEntry({
+            entryId: entryId,
+            eventType: eventType,
+            actor: msg.sender,
+            subject: subject,
+            dataHash: dataHash,
+            timestamp: block.timestamp,
+            previousEntryHash: previousHash
+        });
+        s.entityAuditIds[subject].push(entryId);
+
         emit AuditLogged(entryId, eventType, msg.sender, subject, dataHash, block.timestamp);
         return entryId;
+    }
+
+    function _requireKYCEventType(LibAppStorage.AuditEventType eventType) internal pure {
+        if (
+            eventType != LibAppStorage.AuditEventType.KYC_INITIATED &&
+            eventType != LibAppStorage.AuditEventType.KYC_APPROVED &&
+            eventType != LibAppStorage.AuditEventType.KYC_REJECTED &&
+            eventType != LibAppStorage.AuditEventType.KYC_EXPIRED
+        ) revert InvalidKYCEventType();
+    }
+
+    function _requireAMLEventType(LibAppStorage.AuditEventType eventType) internal pure {
+        if (
+            eventType != LibAppStorage.AuditEventType.TRANSACTION_ASSESSED &&
+            eventType != LibAppStorage.AuditEventType.TRANSACTION_BLOCKED &&
+            eventType != LibAppStorage.AuditEventType.SAR_FILED
+        ) revert InvalidAMLEventType();
+    }
+
+    function _requireSanctionsEventType(LibAppStorage.AuditEventType eventType) internal pure {
+        if (
+            eventType != LibAppStorage.AuditEventType.SANCTIONS_SCREENED &&
+            eventType != LibAppStorage.AuditEventType.SANCTIONS_MATCH &&
+            eventType != LibAppStorage.AuditEventType.SANCTIONS_CLEARED
+        ) revert InvalidSanctionsEventType();
     }
 }

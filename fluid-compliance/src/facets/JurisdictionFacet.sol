@@ -8,37 +8,13 @@ import {IJurisdictionFacet} from "../interfaces/IJurisdictionFacet.sol";
 /// @title JurisdictionFacet
 /// @author Surety Compliance System
 /// @notice Multi-jurisdiction compliance rule management
-/// @dev Handles cross-border compliance and jurisdiction-specific requirements
+/// @dev Handles cross-border compliance and jurisdiction-specific requirements.
+///      All state is stored in LibAppStorage — never in facet instance variables.
 contract JurisdictionFacet is IJurisdictionFacet {
-    using LibAppStorage for LibAppStorage.AppStorage;
 
-    // ============ Storage Structures ============
-
-    struct JurisdictionConfig {
-        bytes32 jurisdictionId;
-        bytes32 countryCode;
-        bool isActive;
-        LibAppStorage.KYCLevel minimumKYCLevel;
-        uint256 kycExpirationPeriod;
-        bool requiresPEPScreening;
-        uint256 reportingThreshold;
-        uint256 enhancedDueDiligenceThreshold;
-        LibAppStorage.SanctionsList[] applicableSanctionsLists;
-        bool fatcaApplicable;
-        bool crsApplicable;
-        uint256 withholdingRate;
-        bool allowedForFactoring;
-        uint256 maxTransactionAmount;
-        bytes32[] blockedCounterparties;
-    }
-
-    // ============ Storage ============
-
-    mapping(bytes32 => JurisdictionConfig) private jurisdictionConfigs;
-    mapping(address => bytes32) private entityJurisdictions;
-    mapping(bytes32 => mapping(bytes32 => bool)) private blockedPairs;
-
-    // ============ Errors ============
+    // ============================================================
+    // Errors
+    // ============================================================
 
     error JurisdictionNotFound();
     error InvalidJurisdiction();
@@ -46,7 +22,9 @@ contract JurisdictionFacet is IJurisdictionFacet {
     error JurisdictionBlocked();
     error ExceedsTransactionLimit();
 
-    // ============ Modifiers ============
+    // ============================================================
+    // Modifiers
+    // ============================================================
 
     modifier whenNotPaused() {
         require(!LibAppStorage.isPaused(), "System paused");
@@ -63,14 +41,17 @@ contract JurisdictionFacet is IJurisdictionFacet {
         _;
     }
 
-    // ============ Core Functions ============
+    // ============================================================
+    // Core Functions
+    // ============================================================
 
     /// @inheritdoc IJurisdictionFacet
     function configureJurisdiction(
-        JurisdictionConfig calldata config
+        LibAppStorage.JurisdictionConfig calldata config
     ) external whenNotPaused onlyAdmin {
         if (config.jurisdictionId == bytes32(0)) revert InvalidJurisdiction();
-        jurisdictionConfigs[config.jurisdictionId] = config;
+        LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
+        s.jurisdictionConfigs[config.jurisdictionId] = config;
         emit JurisdictionUpdated(config.jurisdictionId, config.isActive, block.timestamp);
     }
 
@@ -79,9 +60,92 @@ contract JurisdictionFacet is IJurisdictionFacet {
         address entity,
         bytes32 jurisdictionId
     ) external whenNotPaused onlyComplianceOfficer {
-        if (!jurisdictionConfigs[jurisdictionId].isActive) revert JurisdictionNotFound();
-        entityJurisdictions[entity] = jurisdictionId;
+        LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
+        if (!s.jurisdictionConfigs[jurisdictionId].isActive) revert JurisdictionNotFound();
+        s.entityJurisdictions[entity] = jurisdictionId;
         emit EntityJurisdictionAssigned(entity, jurisdictionId);
+    }
+
+    /// @inheritdoc IJurisdictionFacet
+    function assessCrossBorder(
+        address from,
+        address to,
+        uint256 amount,
+        bytes32 transactionType
+    ) external whenNotPaused returns (LibAppStorage.CrossBorderAssessment memory assessment) {
+        LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
+
+        bytes32 sourceJurisdiction = s.entityJurisdictions[from];
+        bytes32 destJurisdiction = s.entityJurisdictions[to];
+
+        assessment.sourceJurisdiction = sourceJurisdiction;
+        assessment.destinationJurisdiction = destJurisdiction;
+
+        // Blocked pair check
+        if (s.blockedJurisdictionPairs[sourceJurisdiction][destJurisdiction]) {
+            assessment.isPermitted = false;
+            emit CrossBorderAssessed(
+                keccak256(abi.encodePacked(from, to, block.timestamp)),
+                sourceJurisdiction,
+                destJurisdiction,
+                false
+            );
+            revert TransactionNotPermitted();
+        }
+
+        LibAppStorage.JurisdictionConfig memory sourceConfig = s.jurisdictionConfigs[sourceJurisdiction];
+        LibAppStorage.JurisdictionConfig memory destConfig = s.jurisdictionConfigs[destJurisdiction];
+
+        // Transaction limit check
+        if (
+            (sourceConfig.maxTransactionAmount > 0 && amount > sourceConfig.maxTransactionAmount) ||
+            (destConfig.maxTransactionAmount > 0 && amount > destConfig.maxTransactionAmount)
+        ) {
+            assessment.isPermitted = false;
+            revert ExceedsTransactionLimit();
+        }
+
+        // Determine strictest required KYC level
+        assessment.requiredKYCLevel = sourceConfig.minimumKYCLevel > destConfig.minimumKYCLevel
+            ? sourceConfig.minimumKYCLevel
+            : destConfig.minimumKYCLevel;
+
+        // Enhanced due diligence
+        assessment.requiresEnhancedDueDiligence =
+            (sourceConfig.enhancedDueDiligenceThreshold > 0 && amount > sourceConfig.enhancedDueDiligenceThreshold) ||
+            (destConfig.enhancedDueDiligenceThreshold > 0 && amount > destConfig.enhancedDueDiligenceThreshold);
+
+        // Additional withholding for cross-border
+        if (sourceJurisdiction != destJurisdiction) {
+            assessment.additionalWithholding = destConfig.withholdingRate;
+        }
+
+        assessment.isPermitted = true;
+
+        emit CrossBorderAssessed(
+            keccak256(abi.encodePacked(from, to, block.timestamp)),
+            sourceJurisdiction,
+            destJurisdiction,
+            true
+        );
+
+        return assessment;
+    }
+
+    /// @inheritdoc IJurisdictionFacet
+    function blockJurisdictionOperation(
+        bytes32 jurisdictionId,
+        bytes32 operationType
+    ) external whenNotPaused onlyAdmin {
+        LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
+        LibAppStorage.JurisdictionConfig storage config = s.jurisdictionConfigs[jurisdictionId];
+        if (config.jurisdictionId == bytes32(0)) revert JurisdictionNotFound();
+
+        if (operationType == keccak256("FACTORING")) {
+            config.allowedForFactoring = false;
+        }
+
+        emit JurisdictionUpdated(jurisdictionId, config.isActive, block.timestamp);
     }
 
     /// @inheritdoc IJurisdictionFacet
@@ -90,8 +154,9 @@ contract JurisdictionFacet is IJurisdictionFacet {
         bytes32 jurisdiction2,
         string calldata reason
     ) external whenNotPaused onlyComplianceOfficer {
-        blockedPairs[jurisdiction1][jurisdiction2] = true;
-        blockedPairs[jurisdiction2][jurisdiction1] = true;
+        LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
+        s.blockedJurisdictionPairs[jurisdiction1][jurisdiction2] = true;
+        s.blockedJurisdictionPairs[jurisdiction2][jurisdiction1] = true;
         emit CrossBorderAssessed(
             keccak256(abi.encodePacked(jurisdiction1, jurisdiction2, reason)),
             jurisdiction1,
@@ -100,13 +165,22 @@ contract JurisdictionFacet is IJurisdictionFacet {
         );
     }
 
-    // ============ View Functions ============
+    // ============================================================
+    // View Functions
+    // ============================================================
+
+    /// @inheritdoc IJurisdictionFacet
+    function getJurisdiction(
+        bytes32 jurisdictionId
+    ) external view returns (LibAppStorage.JurisdictionConfig memory config) {
+        config = LibAppStorage.appStorage().jurisdictionConfigs[jurisdictionId];
+    }
 
     /// @inheritdoc IJurisdictionFacet
     function getEntityJurisdiction(
         address entity
     ) external view returns (bytes32 jurisdictionId) {
-        jurisdictionId = entityJurisdictions[entity];
+        jurisdictionId = LibAppStorage.appStorage().entityJurisdictions[entity];
     }
 
     /// @inheritdoc IJurisdictionFacet
@@ -115,9 +189,10 @@ contract JurisdictionFacet is IJurisdictionFacet {
         bytes32 destJurisdiction,
         bytes32 transactionType
     ) external view returns (bool permitted) {
-        if (blockedPairs[sourceJurisdiction][destJurisdiction]) return false;
-        JurisdictionConfig memory sourceConfig = jurisdictionConfigs[sourceJurisdiction];
-        JurisdictionConfig memory destConfig = jurisdictionConfigs[destJurisdiction];
+        LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
+        if (s.blockedJurisdictionPairs[sourceJurisdiction][destJurisdiction]) return false;
+        LibAppStorage.JurisdictionConfig memory sourceConfig = s.jurisdictionConfigs[sourceJurisdiction];
+        LibAppStorage.JurisdictionConfig memory destConfig = s.jurisdictionConfigs[destJurisdiction];
         permitted = sourceConfig.isActive && destConfig.isActive;
         if (transactionType == keccak256("FACTORING")) {
             permitted = permitted && sourceConfig.allowedForFactoring && destConfig.allowedForFactoring;
@@ -128,6 +203,6 @@ contract JurisdictionFacet is IJurisdictionFacet {
     function getMinimumKYCLevel(
         bytes32 jurisdictionId
     ) external view returns (LibAppStorage.KYCLevel level) {
-        level = jurisdictionConfigs[jurisdictionId].minimumKYCLevel;
+        level = LibAppStorage.appStorage().jurisdictionConfigs[jurisdictionId].minimumKYCLevel;
     }
 }

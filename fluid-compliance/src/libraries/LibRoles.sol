@@ -23,6 +23,9 @@ library LibRoles {
     bytes32 internal constant SELLER_ROLE  = keccak256("SELLER_ROLE");
     bytes32 internal constant BUYER_ROLE   = keccak256("BUYER_ROLE");
 
+    // Audit role
+    bytes32 internal constant AUDITOR_ROLE = keccak256("AUDITOR_ROLE");
+
     // Emergency roles
     bytes32 internal constant EMERGENCY_ADMIN_ROLE = keccak256("EMERGENCY_ADMIN_ROLE");
     bytes32 internal constant PAUSER_ROLE          = keccak256("PAUSER_ROLE");

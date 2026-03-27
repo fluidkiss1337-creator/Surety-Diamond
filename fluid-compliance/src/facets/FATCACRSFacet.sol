@@ -10,18 +10,21 @@ import {IFATCACRSFacet} from "../interfaces/IFATCACRSFacet.sol";
 /// @notice Tax classification and reporting compliance for cross-border transactions
 /// @dev Implements FATCA and CRS requirements for international tax compliance
 contract FATCACRSFacet is IFATCACRSFacet {
-    using LibAppStorage for LibAppStorage.AppStorage;
 
-    // ============ Constants ============
+    // ============================================================
+    // Constants
+    // ============================================================
 
     uint256 private constant W8_VALIDITY_PERIOD = 1095 days; // 3 years
     uint256 private constant W9_VALIDITY_PERIOD = 1460 days; // 4 years
-    uint256 private constant WITHHOLDING_RATE_US = 3000; // 30% in basis points
+    uint256 private constant WITHHOLDING_RATE_US = 3000;     // 30% in basis points
     uint256 private constant WITHHOLDING_RATE_BACKUP = 2400; // 24% in basis points
-    uint256 private constant FATCA_THRESHOLD = 50000 * 1e18; // $50,000
-    uint256 private constant CRS_THRESHOLD = 10000 * 1e18; // $10,000
+    uint256 private constant FATCA_THRESHOLD = 50_000 * 1e18; // $50,000
+    uint256 private constant CRS_THRESHOLD = 10_000 * 1e18;   // $10,000
 
-    // ============ Errors ============
+    // ============================================================
+    // Errors
+    // ============================================================
 
     error InvalidClassification();
     error TaxFormExpired();
@@ -30,7 +33,9 @@ contract FATCACRSFacet is IFATCACRSFacet {
     error ObligationNotFound();
     error UnauthorizedTaxOfficer();
 
-    // ============ Modifiers ============
+    // ============================================================
+    // Modifiers
+    // ============================================================
 
     modifier whenNotPaused() {
         require(!LibAppStorage.isPaused(), "System paused");
@@ -47,7 +52,30 @@ contract FATCACRSFacet is IFATCACRSFacet {
         _;
     }
 
-    // ============ Core Functions ============
+    // ============================================================
+    // Core Functions
+    // ============================================================
+
+    /// @inheritdoc IFATCACRSFacet
+    function setTaxClassification(
+        address entity,
+        LibAppStorage.TaxClassification calldata classification
+    ) external whenNotPaused onlyTaxOfficer {
+        if (
+            uint8(classification.fatcaStatus) > uint8(LibAppStorage.FATCAClassification.UNCLASSIFIED) ||
+            uint8(classification.crsType) > uint8(LibAppStorage.CRSEntityType.INDIVIDUAL)
+        ) revert InvalidClassification();
+
+        LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
+        s.taxClassifications[entity] = classification;
+
+        emit TaxClassificationUpdated(
+            entity,
+            uint8(classification.fatcaStatus),
+            uint8(classification.crsType),
+            block.timestamp
+        );
+    }
 
     /// @inheritdoc IFATCACRSFacet
     function recordTaxForm(
@@ -66,6 +94,10 @@ contract FATCACRSFacet is IFATCACRSFacet {
         uint256 maxExpiration = block.timestamp +
             (formType == keccak256("W9") ? W9_VALIDITY_PERIOD : W8_VALIDITY_PERIOD);
         if (expirationDate > maxExpiration) expirationDate = maxExpiration;
+
+        LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
+        s.taxClassifications[entity].w8w9OnFile = true;
+        s.taxClassifications[entity].expirationDate = expirationDate;
 
         emit TaxFormStatusChanged(entity, true, expirationDate);
     }
@@ -96,13 +128,20 @@ contract FATCACRSFacet is IFATCACRSFacet {
         if (amount >= CRS_THRESHOLD && fromKYC.jurisdictionId != toKYC.jurisdictionId) {
             requiresReporting = true;
             if (jurisdictionCount < 10) jurisdictions[jurisdictionCount++] = fromKYC.jurisdictionId;
-            if (jurisdictionCount < 10) jurisdictions[jurisdictionCount++] = toKYC.jurisdictionId;
+            if (jurisdictionCount < 10 && toKYC.jurisdictionId != fromKYC.jurisdictionId) {
+                jurisdictions[jurisdictionCount++] = toKYC.jurisdictionId;
+            }
         }
 
         assembly { mstore(jurisdictions, jurisdictionCount) }
 
         if (requiresReporting) {
-            emit ReportingObligationTriggered(transactionId, from, jurisdictions.length > 0 ? jurisdictions[0] : bytes32(0), amount);
+            emit ReportingObligationTriggered(
+                transactionId,
+                from,
+                jurisdictions.length > 0 ? jurisdictions[0] : bytes32(0),
+                amount
+            );
         }
         return (requiresReporting, jurisdictions);
     }
@@ -118,16 +157,40 @@ contract FATCACRSFacet is IFATCACRSFacet {
         obligationId = keccak256(abi.encodePacked(
             entity, jurisdiction, amount, accountType, reportingYear, block.timestamp
         ));
+
+        LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
+        s.reportingObligations[obligationId] = LibAppStorage.ReportingObligation({
+            obligationId: obligationId,
+            reportableEntity: entity,
+            reportingJurisdiction: jurisdiction,
+            reportableAmount: amount,
+            accountType: accountType,
+            reportingYear: reportingYear,
+            isReported: false
+        });
+        s.pendingObligationIds[entity].push(obligationId);
+
         emit ReportingObligationTriggered(obligationId, entity, jurisdiction, amount);
         return obligationId;
     }
 
     /// @inheritdoc IFATCACRSFacet
     function markAsReported(bytes32 obligationId) external whenNotPaused onlyComplianceOfficer {
-        // In production, would update obligation status in storage
+        LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
+        if (s.reportingObligations[obligationId].obligationId == bytes32(0)) revert ObligationNotFound();
+        s.reportingObligations[obligationId].isReported = true;
     }
 
-    // ============ View Functions ============
+    // ============================================================
+    // View Functions
+    // ============================================================
+
+    /// @inheritdoc IFATCACRSFacet
+    function getTaxClassification(
+        address entity
+    ) external view returns (LibAppStorage.TaxClassification memory classification) {
+        classification = LibAppStorage.appStorage().taxClassifications[entity];
+    }
 
     /// @inheritdoc IFATCACRSFacet
     function checkWithholding(
@@ -146,5 +209,30 @@ contract FATCACRSFacet is IFATCACRSFacet {
             return (true, WITHHOLDING_RATE_BACKUP);
         }
         return (false, 0);
+    }
+
+    /// @inheritdoc IFATCACRSFacet
+    function getPendingObligations(
+        address entity,
+        uint256 year
+    ) external view returns (LibAppStorage.ReportingObligation[] memory obligations) {
+        LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
+        bytes32[] memory ids = s.pendingObligationIds[entity];
+
+        // Count matching obligations
+        uint256 count = 0;
+        for (uint256 i = 0; i < ids.length; i++) {
+            LibAppStorage.ReportingObligation memory ob = s.reportingObligations[ids[i]];
+            if (!ob.isReported && (year == 0 || ob.reportingYear == year)) count++;
+        }
+
+        obligations = new LibAppStorage.ReportingObligation[](count);
+        uint256 idx = 0;
+        for (uint256 i = 0; i < ids.length; i++) {
+            LibAppStorage.ReportingObligation memory ob = s.reportingObligations[ids[i]];
+            if (!ob.isReported && (year == 0 || ob.reportingYear == year)) {
+                obligations[idx++] = ob;
+            }
+        }
     }
 }
