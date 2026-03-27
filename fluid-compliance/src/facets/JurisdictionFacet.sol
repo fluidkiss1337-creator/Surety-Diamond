@@ -1,0 +1,133 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+import {LibAppStorage} from "../libraries/LibAppStorage.sol";
+import {LibRoles} from "../libraries/LibRoles.sol";
+import {IJurisdictionFacet} from "../interfaces/IJurisdictionFacet.sol";
+
+/// @title JurisdictionFacet
+/// @author Surety Compliance System
+/// @notice Multi-jurisdiction compliance rule management
+/// @dev Handles cross-border compliance and jurisdiction-specific requirements
+contract JurisdictionFacet is IJurisdictionFacet {
+    using LibAppStorage for LibAppStorage.AppStorage;
+
+    // ============ Storage Structures ============
+
+    struct JurisdictionConfig {
+        bytes32 jurisdictionId;
+        bytes32 countryCode;
+        bool isActive;
+        LibAppStorage.KYCLevel minimumKYCLevel;
+        uint256 kycExpirationPeriod;
+        bool requiresPEPScreening;
+        uint256 reportingThreshold;
+        uint256 enhancedDueDiligenceThreshold;
+        LibAppStorage.SanctionsList[] applicableSanctionsLists;
+        bool fatcaApplicable;
+        bool crsApplicable;
+        uint256 withholdingRate;
+        bool allowedForFactoring;
+        uint256 maxTransactionAmount;
+        bytes32[] blockedCounterparties;
+    }
+
+    // ============ Storage ============
+
+    mapping(bytes32 => JurisdictionConfig) private jurisdictionConfigs;
+    mapping(address => bytes32) private entityJurisdictions;
+    mapping(bytes32 => mapping(bytes32 => bool)) private blockedPairs;
+
+    // ============ Errors ============
+
+    error JurisdictionNotFound();
+    error InvalidJurisdiction();
+    error TransactionNotPermitted();
+    error JurisdictionBlocked();
+    error ExceedsTransactionLimit();
+
+    // ============ Modifiers ============
+
+    modifier whenNotPaused() {
+        require(!LibAppStorage.isPaused(), "System paused");
+        _;
+    }
+
+    modifier onlyAdmin() {
+        LibRoles.checkRole(LibRoles.DEFAULT_ADMIN_ROLE);
+        _;
+    }
+
+    modifier onlyComplianceOfficer() {
+        LibRoles.checkRole(LibRoles.COMPLIANCE_OFFICER_ROLE);
+        _;
+    }
+
+    // ============ Core Functions ============
+
+    /// @inheritdoc IJurisdictionFacet
+    function configureJurisdiction(
+        JurisdictionConfig calldata config
+    ) external whenNotPaused onlyAdmin {
+        if (config.jurisdictionId == bytes32(0)) revert InvalidJurisdiction();
+        jurisdictionConfigs[config.jurisdictionId] = config;
+        emit JurisdictionUpdated(config.jurisdictionId, config.isActive, block.timestamp);
+    }
+
+    /// @inheritdoc IJurisdictionFacet
+    function assignEntityJurisdiction(
+        address entity,
+        bytes32 jurisdictionId
+    ) external whenNotPaused onlyComplianceOfficer {
+        if (!jurisdictionConfigs[jurisdictionId].isActive) revert JurisdictionNotFound();
+        entityJurisdictions[entity] = jurisdictionId;
+        emit EntityJurisdictionAssigned(entity, jurisdictionId);
+    }
+
+    /// @inheritdoc IJurisdictionFacet
+    function blockCounterpartyPair(
+        bytes32 jurisdiction1,
+        bytes32 jurisdiction2,
+        string calldata reason
+    ) external whenNotPaused onlyComplianceOfficer {
+        blockedPairs[jurisdiction1][jurisdiction2] = true;
+        blockedPairs[jurisdiction2][jurisdiction1] = true;
+        emit CrossBorderAssessed(
+            keccak256(abi.encodePacked(jurisdiction1, jurisdiction2, reason)),
+            jurisdiction1,
+            jurisdiction2,
+            false
+        );
+    }
+
+    // ============ View Functions ============
+
+    /// @inheritdoc IJurisdictionFacet
+    function getEntityJurisdiction(
+        address entity
+    ) external view returns (bytes32 jurisdictionId) {
+        jurisdictionId = entityJurisdictions[entity];
+    }
+
+    /// @inheritdoc IJurisdictionFacet
+    function isTransactionPermitted(
+        bytes32 sourceJurisdiction,
+        bytes32 destJurisdiction,
+        bytes32 transactionType
+    ) external view returns (bool permitted) {
+        if (blockedPairs[sourceJurisdiction][destJurisdiction]) return false;
+        JurisdictionConfig memory sourceConfig = jurisdictionConfigs[sourceJurisdiction];
+        JurisdictionConfig memory destConfig = jurisdictionConfigs[destJurisdiction];
+        permitted = sourceConfig.isActive && destConfig.isActive;
+        if (transactionType == keccak256("FACTORING")) {
+            permitted = permitted && sourceConfig.allowedForFactoring && destConfig.allowedForFactoring;
+        }
+    }
+
+    /// @inheritdoc IJurisdictionFacet
+    function getMinimumKYCLevel(
+        bytes32 jurisdictionId
+    ) external view returns (LibAppStorage.KYCLevel level) {
+        level = jurisdictionConfigs[jurisdictionId].minimumKYCLevel;
+    }
+}
