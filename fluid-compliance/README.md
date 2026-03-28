@@ -66,7 +66,7 @@ src/
 ├── diamond/
 │   ├── SuretyDiamond.sol       EIP-2535 proxy with 48-hour upgrade timelock
 │   └── DiamondInit.sol         One-time initializer (owner, treasury, roles)
-├── facets/                     10 compliance facets + 1 diamond management facet
+├── facets/                     11 facets (9 compliance + 1 oracle + 1 diamond management)
 │   ├── KYCFacet.sol            FATF-compliant KYC, document Merkle proofs, PEP flag
 │   ├── AMLFacet.sol            Risk scoring (0-1000), SAR filing, entity profiling
 │   ├── SanctionsFacet.sol      OFAC/UN/EU Merkle-tree screening

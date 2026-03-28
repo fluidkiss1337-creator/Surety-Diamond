@@ -105,6 +105,12 @@ Full architecture documentation, facet reference, role table, and deployment ins
 
 ---
 
+## License
+
+MIT License — Copyright (c) 2026 Fluid Kiss Consultations. See [`LICENSE`](LICENSE) for the full text.
+
+---
+
 ## Fluid Kiss Consultations
 
 Available for custom EIP-2535 Diamond architecture, implementation, and consultation.
