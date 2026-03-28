@@ -110,6 +110,8 @@ contract SanctionsFacet is ISanctionsFacet {
         LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
         s.sanctionedEntities[entityHash] = true;
         s.sanctionDetails[entityHash] = record;
+        // NOTE: address(0) is emitted because this function operates on entityHash only.
+        // TODO: Add entity address parameter or emit a hash-indexed event variant.
         emit SanctionsMatchFound(address(0), record.lists, entityHash, block.timestamp);
     }
 
@@ -121,6 +123,9 @@ contract SanctionsFacet is ISanctionsFacet {
         LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
         s.sanctionedEntities[entityHash] = false;
         delete s.sanctionDetails[entityHash];
+        // TODO: Store reason in audit trail — currently unused
+        // NOTE: address(0) is emitted because this function operates on entityHash only.
+        // TODO: Add entity address parameter or emit a hash-indexed event variant.
         emit EntityCleared(address(0), block.timestamp, msg.sender);
     }
 
@@ -130,6 +135,7 @@ contract SanctionsFacet is ISanctionsFacet {
         bytes32 identityHash,
         string calldata clearanceReason
     ) external whenNotPaused onlySanctionsManager {
+        // TODO: Store clearanceReason in audit trail — currently unused
         LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
         s.sanctionedEntities[identityHash] = false;
         delete s.sanctionDetails[identityHash];

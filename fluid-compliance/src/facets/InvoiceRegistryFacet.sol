@@ -173,6 +173,7 @@ contract InvoiceRegistryFacet is IInvoiceRegistryFacet {
         } else {
             invoice.status = LibAppStorage.InvoiceStatus.PARTIALLY_PAID;
         }
+        // TODO: Store paymentReference for off-chain payment tracking
         emit InvoiceStatusChanged(invoiceHash, prev, invoice.status);
     }
 
@@ -208,6 +209,7 @@ contract InvoiceRegistryFacet is IInvoiceRegistryFacet {
         LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
         LibAppStorage.InvoiceRecord memory invoice = s.invoices[invoiceHash];
         isFactored = invoice.status == LibAppStorage.InvoiceStatus.FACTORED;
+        // TODO: Retrieve actual factor address from FactoringRecord instead of returning address(0)
         factor = address(0);
     }
 

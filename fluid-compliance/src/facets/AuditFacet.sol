@@ -117,6 +117,7 @@ contract AuditFacet is IAuditFacet {
         LibAppStorage.AuditEventType eventType,
         uint256 period
     ) external view returns (uint256 count) {
+        // TODO: Implement filtering by eventType and period — currently returns total entries unfiltered
         count = LibAppStorage.appStorage().totalAuditEntries;
     }
 

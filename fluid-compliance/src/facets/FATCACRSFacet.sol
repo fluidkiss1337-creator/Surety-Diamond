@@ -29,9 +29,7 @@ contract FATCACRSFacet is IFATCACRSFacet {
     error InvalidClassification();
     error TaxFormExpired();
     error InvalidTaxForm();
-    error ReportingNotRequired();
     error ObligationNotFound();
-    error UnauthorizedTaxOfficer();
 
     // ============================================================
     // Modifiers
