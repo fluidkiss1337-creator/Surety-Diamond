@@ -83,7 +83,6 @@ contract AuditFacet is IAuditFacet {
         LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
         bytes32[] memory ids = s.entityAuditIds[entity];
 
-        // Two-pass: count then fill, to avoid dynamic array resizing
         uint256 count = 0;
         for (uint256 i = 0; i < ids.length; i++) {
             LibAppStorage.AuditEntry memory e = s.auditEntries[ids[i]];
@@ -133,7 +132,7 @@ contract AuditFacet is IAuditFacet {
         address entity,
         LibAppStorage.AuditEventType eventType,
         bytes32 dataHash
-    ) external {
+    ) external onlyAuditor {
         _requireKYCEventType(eventType);
         _logAuditInternal(eventType, entity, dataHash);
     }
@@ -146,7 +145,7 @@ contract AuditFacet is IAuditFacet {
         address entity,
         LibAppStorage.AuditEventType eventType,
         bytes32 dataHash
-    ) external {
+    ) external onlyAuditor {
         _requireAMLEventType(eventType);
         _logAuditInternal(eventType, entity, dataHash);
     }
@@ -159,7 +158,7 @@ contract AuditFacet is IAuditFacet {
         address entity,
         LibAppStorage.AuditEventType eventType,
         bytes32 dataHash
-    ) external {
+    ) external onlyAuditor {
         _requireSanctionsEventType(eventType);
         _logAuditInternal(eventType, entity, dataHash);
     }
@@ -182,12 +181,10 @@ contract AuditFacet is IAuditFacet {
         bytes32 previousHash = s.latestAuditHash;
         bytes32 newHash = keccak256(abi.encodePacked(entryId, previousHash, block.timestamp));
 
-        // Hash chain update
         s.auditChain[previousHash] = newHash;
         s.latestAuditHash = newHash;
         s.totalAuditEntries++;
 
-        // Persist full entry for retrieval
         s.auditEntries[entryId] = LibAppStorage.AuditEntry({
             entryId: entryId,
             eventType: eventType,
