@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+/// @notice Reverted when a state-changing call is made while the system is paused
+error SystemPaused();
+
 /// @title LibAppStorage
 /// @author Surety Compliance System
 /// @notice Central storage management for the Surety compliance diamond
@@ -8,7 +11,9 @@ pragma solidity ^0.8.24;
 library LibAppStorage {
     bytes32 constant STORAGE_POSITION = keccak256("surety.compliance.diamond.storage");
 
-    // ============ Data Structures ============
+    // ============================================================
+    // KYC
+    // ============================================================
 
     /// @notice KYC verification levels aligned with FATF recommendations
     enum KYCLevel {
@@ -43,6 +48,10 @@ library LibAppStorage {
         uint256 riskScore;       // 0-1000 scale
     }
 
+    // ============================================================
+    // AML
+    // ============================================================
+
     /// @notice AML risk levels
     enum RiskLevel {
         LOW,       // 0: Normal processing
@@ -73,6 +82,10 @@ library LibAppStorage {
         bool flagged;            // Suspicious flag
     }
 
+    // ============================================================
+    // Sanctions
+    // ============================================================
+
     /// @notice Sanctions list types
     enum SanctionsList {
         OFAC_SDN,  // 0: US SDN List
@@ -93,6 +106,10 @@ library LibAppStorage {
         bool isActive;         // Current status
     }
 
+    // ============================================================
+    // Invoice Registry
+    // ============================================================
+
     /// @notice Invoice lifecycle status
     enum InvoiceStatus {
         REGISTERED,     // 0: Initial registration
@@ -102,6 +119,29 @@ library LibAppStorage {
         PAID,           // 4: Fully settled
         DISPUTED,       // 5: Under dispute
         CANCELLED       // 6: Cancelled
+    }
+
+    /// @notice Factoring agreement lifecycle status
+    enum FactoringStatus {
+        PENDING,   // 0: Awaiting activation
+        ACTIVE,    // 1: Financing live
+        SETTLED,   // 2: Fully repaid
+        DEFAULTED, // 3: Buyer defaulted
+        CANCELLED  // 4: Cancelled before activation
+    }
+
+    /// @notice Factoring agreement record
+    struct FactoringRecord {
+        bytes32 agreementId;
+        bytes32 invoiceHash;
+        address factor;
+        address seller;
+        uint256 advanceAmount;    // Absolute amount advanced
+        uint256 advanceRate;      // Basis points (e.g. 8000 = 80%)
+        uint256 feeRate;          // Basis points annual fee
+        uint256 agreementDate;
+        uint256 expectedSettlement;
+        FactoringStatus status;
     }
 
     /// @notice Invoice record
@@ -119,7 +159,162 @@ library LibAppStorage {
         address registeredBy;     // Who registered
     }
 
-    /// @notice Main storage struct
+    // ============================================================
+    // FATCA / CRS
+    // ============================================================
+
+    /// @notice FATCA entity classification
+    enum FATCAClassification {
+        US_PERSON,               // 0
+        NON_US_PERSON,           // 1
+        PARTICIPATING_FFI,       // 2
+        NON_PARTICIPATING_FFI,   // 3
+        EXEMPT_BENEFICIAL_OWNER, // 4
+        PASSIVE_NFFE,            // 5
+        ACTIVE_NFFE,             // 6
+        UNCLASSIFIED             // 7
+    }
+
+    /// @notice CRS entity type
+    enum CRSEntityType {
+        FINANCIAL_INSTITUTION, // 0
+        ACTIVE_NFE,            // 1
+        PASSIVE_NFE,           // 2
+        GOVERNMENT_ENTITY,     // 3
+        INTERNATIONAL_ORG,     // 4
+        INDIVIDUAL             // 5
+    }
+
+    /// @notice Tax classification record
+    struct TaxClassification {
+        FATCAClassification fatcaStatus;
+        CRSEntityType crsType;
+        bytes32[] taxResidenceCountries;
+        bytes32[] taxIdNumbers;    // Encrypted TIN references — no PII on-chain
+        uint256 classificationDate;
+        uint256 expirationDate;
+        address certifiedBy;
+        bool w8w9OnFile;
+    }
+
+    /// @notice Reporting obligation record
+    struct ReportingObligation {
+        bytes32 obligationId;
+        address reportableEntity;
+        bytes32 reportingJurisdiction;
+        uint256 reportableAmount;
+        bytes32 accountType;
+        uint256 reportingYear;
+        bool isReported;
+    }
+
+    // ============================================================
+    // Jurisdiction
+    // ============================================================
+
+    /// @notice Jurisdiction regulatory configuration
+    struct JurisdictionConfig {
+        bytes32 jurisdictionId;
+        bytes32 countryCode;      // ISO 3166-1 alpha-2 as bytes32
+        bool isActive;
+        // KYC requirements
+        KYCLevel minimumKYCLevel;
+        uint256 kycExpirationPeriod;
+        bool requiresPEPScreening;
+        // AML thresholds
+        uint256 reportingThreshold;
+        uint256 enhancedDueDiligenceThreshold;
+        // Sanctions
+        SanctionsList[] applicableSanctionsLists;
+        // Tax
+        bool fatcaApplicable;
+        bool crsApplicable;
+        uint256 withholdingRate;  // basis points
+        // Operational
+        bool allowedForFactoring;
+        uint256 maxTransactionAmount;
+        bytes32[] blockedCounterparties;
+    }
+
+    /// @notice Result of a cross-border compliance assessment
+    struct CrossBorderAssessment {
+        bytes32 sourceJurisdiction;
+        bytes32 destinationJurisdiction;
+        bool isPermitted;
+        KYCLevel requiredKYCLevel;
+        uint256 additionalWithholding; // basis points
+        bool requiresEnhancedDueDiligence;
+        bytes32[] applicableRestrictions;
+    }
+
+    // ============================================================
+    // Oracle
+    // ============================================================
+
+    /// @notice Data types oracles may provide
+    enum OracleDataType {
+        SANCTIONS_LIST,    // 0
+        PEP_LIST,          // 1
+        EXCHANGE_RATE,     // 2
+        RISK_SCORE,        // 3
+        KYC_VERIFICATION,  // 4
+        CREDIT_SCORE       // 5
+    }
+
+    /// @notice Pending oracle data request
+    struct OracleRequest {
+        bytes32 requestId;
+        OracleDataType dataType;
+        bytes32 dataKey;
+        uint256 requestTimestamp;
+        uint256 expirationTimestamp;
+        address requester;
+        bool fulfilled;
+    }
+
+    // ============================================================
+    // Audit
+    // ============================================================
+
+    /// @notice Audit event types for hash-chained log
+    enum AuditEventType {
+        KYC_INITIATED,
+        KYC_APPROVED,
+        KYC_REJECTED,
+        KYC_EXPIRED,
+        TRANSACTION_ASSESSED,
+        TRANSACTION_BLOCKED,
+        SAR_FILED,
+        SANCTIONS_SCREENED,
+        SANCTIONS_MATCH,
+        SANCTIONS_CLEARED,
+        INVOICE_REGISTERED,
+        INVOICE_FACTORED,
+        DOUBLE_FACTOR_ATTEMPT,
+        TAX_CLASSIFIED,
+        REPORTING_TRIGGERED,
+        ACCESS_GRANTED,
+        ACCESS_REVOKED,
+        SYSTEM_UPDATE,
+        EMERGENCY_PAUSE
+    }
+
+    /// @notice Individual audit log entry
+    struct AuditEntry {
+        bytes32 entryId;
+        AuditEventType eventType;
+        address actor;
+        address subject;
+        bytes32 dataHash;
+        uint256 timestamp;
+        bytes32 previousEntryHash;
+    }
+
+    // ============================================================
+    // Main Storage Struct
+    // ============================================================
+
+    /// @notice Single shared storage struct used by all facets
     struct AppStorage {
         // ===== KYC Storage =====
         mapping(address => KYCRecord) kycRecords;
@@ -144,6 +339,33 @@ library LibAppStorage {
         mapping(address => bytes32[]) sellerInvoices;
         mapping(address => bytes32[]) buyerInvoices;
 
+        // ===== FATCA/CRS Storage =====
+        mapping(address => TaxClassification) taxClassifications;
+        mapping(bytes32 => ReportingObligation) reportingObligations;
+        mapping(address => bytes32[]) pendingObligationIds;
+
+        // ===== Jurisdiction Storage =====
+        mapping(bytes32 => JurisdictionConfig) jurisdictionConfigs;
+        mapping(address => bytes32) entityJurisdictions;
+        mapping(bytes32 => mapping(bytes32 => bool)) blockedJurisdictionPairs;
+
+        // ===== Oracle Storage =====
+        mapping(address => bool) oracleActive;
+        // Packed: address => encoded OracleDataType[] (abi.encode)
+        mapping(address => bytes) oracleAuthorizedTypes;
+        mapping(bytes32 => OracleRequest) oracleRequests;
+        // dataType hash => dataKey => cached bytes value
+        mapping(bytes32 => mapping(bytes32 => bytes)) oracleCachedData;
+        mapping(bytes32 => mapping(bytes32 => uint256)) oracleDataTimestamps;
+        uint256 oracleRequestNonce;
+
+        // ===== Audit Trail =====
+        bytes32 latestAuditHash;
+        uint256 totalAuditEntries;
+        mapping(bytes32 => bytes32) auditChain;    // prevHash => nextHash
+        mapping(bytes32 => AuditEntry) auditEntries; // entryId => entry
+        mapping(address => bytes32[]) entityAuditIds; // entity => entryIds
+
         // ===== Access Control =====
         mapping(bytes32 => mapping(address => bool)) roleMembers;
         mapping(bytes32 => bytes32) roleAdmins;
@@ -153,15 +375,14 @@ library LibAppStorage {
         uint256 lastSystemUpdate;
         address treasuryAddress;
         uint256 timelockDuration;
-
-        // ===== Audit Trail =====
-        bytes32 latestAuditHash;
-        uint256 totalAuditEntries;
-        mapping(bytes32 => bytes32) auditChain; // entryHash => nextEntryHash
     }
 
-    /// @notice Get the storage pointer
-    /// @return s Storage struct pointer
+    // ============================================================
+    // Storage accessor
+    // ============================================================
+
+    /// @notice Get the AppStorage pointer at the deterministic slot
+    /// @return s The AppStorage struct stored at STORAGE_POSITION
     function appStorage() internal pure returns (AppStorage storage s) {
         bytes32 position = STORAGE_POSITION;
         assembly {
@@ -169,9 +390,9 @@ library LibAppStorage {
         }
     }
 
-    /// @notice Check if system is paused
-    /// @return paused Whether system is paused
-    function isPaused() internal view returns (bool paused) {
+    /// @notice Check if the system is paused
+    /// @return True if the system pause flag is set
+    function isPaused() internal view returns (bool) {
         return appStorage().systemPaused;
     }
 }

@@ -23,6 +23,9 @@ library LibRoles {
     bytes32 internal constant SELLER_ROLE  = keccak256("SELLER_ROLE");
     bytes32 internal constant BUYER_ROLE   = keccak256("BUYER_ROLE");
 
+    // Audit role
+    bytes32 internal constant AUDITOR_ROLE = keccak256("AUDITOR_ROLE");
+
     // Emergency roles
     bytes32 internal constant EMERGENCY_ADMIN_ROLE = keccak256("EMERGENCY_ADMIN_ROLE");
     bytes32 internal constant PAUSER_ROLE          = keccak256("PAUSER_ROLE");
@@ -40,13 +43,18 @@ library LibRoles {
 
     // ============ Functions ============
 
-    /// @notice Check if account has role
+    /// @notice Check if an account holds a specific role
+    /// @param account The address to check
+    /// @param role The role identifier (keccak256 hash)
+    /// @return True if the account holds the role
     function hasRole(address account, bytes32 role) internal view returns (bool) {
         LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
         return s.roleMembers[role][account];
     }
 
-    /// @notice Grant role to account
+    /// @notice Grant a role to an account
+    /// @param role The role identifier to grant
+    /// @param account The address to receive the role
     function grantRole(bytes32 role, address account) internal {
         LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
         if (!s.roleMembers[role][account]) {
@@ -55,7 +63,9 @@ library LibRoles {
         }
     }
 
-    /// @notice Revoke role from account
+    /// @notice Revoke a role from an account
+    /// @param role The role identifier to revoke
+    /// @param account The address to remove the role from
     function revokeRole(bytes32 role, address account) internal {
         LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
         if (s.roleMembers[role][account]) {
@@ -64,12 +74,15 @@ library LibRoles {
         }
     }
 
-    /// @notice Check role and revert if not granted
+    /// @notice Revert if msg.sender does not hold the specified role
+    /// @param role The role identifier required
     function checkRole(bytes32 role) internal view {
         checkRole(role, msg.sender);
     }
 
-    /// @notice Check role for specific account and revert if not granted
+    /// @notice Revert if a specific account does not hold the specified role
+    /// @param role The role identifier required
+    /// @param account The address to check
     function checkRole(bytes32 role, address account) internal view {
         if (!hasRole(account, role)) {
             revert AccessControlUnauthorized(account, role);
@@ -77,6 +90,8 @@ library LibRoles {
     }
 
     /// @notice Get the admin role for a given role
+    /// @param role The role to look up
+    /// @return adminRole The admin role identifier (defaults to DEFAULT_ADMIN_ROLE)
     function getRoleAdmin(bytes32 role) internal view returns (bytes32 adminRole) {
         LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
         adminRole = s.roleAdmins[role];
@@ -86,7 +101,9 @@ library LibRoles {
         return adminRole;
     }
 
-    /// @notice Set admin role for a given role
+    /// @notice Set the admin role for a given role
+    /// @param role The role to update
+    /// @param adminRole The new admin role identifier
     function setRoleAdmin(bytes32 role, bytes32 adminRole) internal {
         LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
         bytes32 previousAdminRole = getRoleAdmin(role);

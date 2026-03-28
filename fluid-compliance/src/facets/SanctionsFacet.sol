@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {LibAppStorage} from "../libraries/LibAppStorage.sol";
+import {LibAppStorage, SystemPaused} from "../libraries/LibAppStorage.sol";
 import {LibRoles} from "../libraries/LibRoles.sol";
 import {ISanctionsFacet} from "../interfaces/ISanctionsFacet.sol";
 
@@ -22,7 +22,7 @@ contract SanctionsFacet is ISanctionsFacet {
     // ============ Modifiers ============
 
     modifier whenNotPaused() {
-        require(!LibAppStorage.isPaused(), "System paused");
+        if (LibAppStorage.isPaused()) revert SystemPaused();
         _;
     }
 

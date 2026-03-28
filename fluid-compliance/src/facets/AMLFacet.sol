@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {LibAppStorage} from "../libraries/LibAppStorage.sol";
+import {LibAppStorage, SystemPaused} from "../libraries/LibAppStorage.sol";
 import {LibRoles} from "../libraries/LibRoles.sol";
 import {IAMLFacet} from "../interfaces/IAMLFacet.sol";
 
@@ -29,7 +29,7 @@ contract AMLFacet is IAMLFacet {
     // ============ Modifiers ============
 
     modifier whenNotPaused() {
-        require(!LibAppStorage.isPaused(), "System paused");
+        if (LibAppStorage.isPaused()) revert SystemPaused();
         _;
     }
 
@@ -83,10 +83,17 @@ contract AMLFacet is IAMLFacet {
         // Cap risk score
         if (riskPoints > MAX_RISK_SCORE) riskPoints = MAX_RISK_SCORE;
 
+        LibAppStorage.RiskLevel riskLevel;
+        if (riskPoints >= HIGH_RISK_THRESHOLD) riskLevel = LibAppStorage.RiskLevel.HIGH;
+        else if (riskPoints >= MEDIUM_RISK_THRESHOLD) riskLevel = LibAppStorage.RiskLevel.MEDIUM;
+        else riskLevel = LibAppStorage.RiskLevel.LOW;
+
         score = LibAppStorage.RiskScore({
-            score: uint16(riskPoints),
-            timestamp: block.timestamp,
-            assessedBy: msg.sender
+            score: riskPoints,
+            level: riskLevel,
+            calculationDate: block.timestamp,
+            riskFactors: new bytes32[](0),
+            requiresReview: riskPoints >= HIGH_RISK_THRESHOLD
         });
 
         canProceed = riskPoints < HIGH_RISK_THRESHOLD;

@@ -1,30 +1,59 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {LibAppStorage} from "../libraries/LibAppStorage.sol";
+
 /// @title IFATCACRSFacet
 /// @notice Interface for FATCA/CRS tax compliance reporting
 /// @dev All personally identifiable information is stored as keccak256 hashes only - never raw PII
 interface IFATCACRSFacet {
 
-    enum ReportingStatus { PENDING, SUBMITTED, ACCEPTED, REJECTED }
+    event TaxClassificationUpdated(address indexed entity, uint8 fatcaStatus, uint8 crsType, uint256 timestamp);
+    event TaxFormStatusChanged(address indexed entity, bool onFile, uint256 expirationDate);
+    event ReportingObligationTriggered(bytes32 indexed obligationId, address indexed entity, bytes32 indexed jurisdiction, uint256 amount);
 
-    struct FATCARecord {
-        bytes32 entityHash;       // keccak256 of entity identifier - NO raw PII on-chain
-        bytes32 tinHash;          // keccak256 of Tax Identification Number
-        bytes32 jurisdictionId;   // Country of tax residency
-        bool isUSPerson;          // FATCA classification
-        bool isCRSReportable;     // CRS reportable status
-        ReportingStatus status;
-        uint256 lastReported;
-    }
+    function setTaxClassification(
+        address entity,
+        LibAppStorage.TaxClassification calldata classification
+    ) external;
 
-    event FATCARecordCreated(bytes32 indexed entityHash, bytes32 jurisdictionId, bool isUSPerson);
-    event CRSReportSubmitted(bytes32 indexed entityHash, bytes32 jurisdictionId, uint256 reportingYear);
-    event ReportingStatusUpdated(bytes32 indexed entityHash, ReportingStatus newStatus);
+    function recordTaxForm(
+        address entity,
+        bytes32 formType,
+        bytes32 documentHash,
+        uint256 expirationDate
+    ) external;
 
-    function createFATCARecord(bytes32 entityHash, bytes32 tinHash, bytes32 jurisdictionId, bool isUSPerson) external;
-    function updateCRSStatus(bytes32 entityHash, bool isCRSReportable) external;
-    function submitCRSReport(bytes32 entityHash, uint256 reportingYear) external;
-    function getFATCARecord(bytes32 entityHash) external view returns (FATCARecord memory record);
-    function isReportableEntity(bytes32 entityHash) external view returns (bool reportable);
+    function assessReportingRequirement(
+        bytes32 transactionId,
+        address from,
+        address to,
+        uint256 amount,
+        bytes32 transactionType
+    ) external returns (bool requiresReporting, bytes32[] memory jurisdictions);
+
+    function createReportingObligation(
+        address entity,
+        bytes32 jurisdiction,
+        uint256 amount,
+        bytes32 accountType,
+        uint256 reportingYear
+    ) external returns (bytes32 obligationId);
+
+    function markAsReported(bytes32 obligationId) external;
+
+    function getTaxClassification(
+        address entity
+    ) external view returns (LibAppStorage.TaxClassification memory classification);
+
+    function checkWithholding(
+        address payer,
+        address payee,
+        bytes32 paymentType
+    ) external view returns (bool withhold, uint256 rate);
+
+    function getPendingObligations(
+        address entity,
+        uint256 year
+    ) external view returns (LibAppStorage.ReportingObligation[] memory obligations);
 }

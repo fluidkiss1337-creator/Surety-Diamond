@@ -1,33 +1,65 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {LibAppStorage} from "../libraries/LibAppStorage.sol";
+
 /// @title IAuditFacet
-/// @notice Interface for immutable on-chain audit trail management
+/// @notice Interface for immutable hash-chained on-chain audit trail
 interface IAuditFacet {
 
-    enum AuditEventType {
-        KYC_INITIATED, KYC_APPROVED, KYC_REJECTED,
-        SANCTIONS_SCREEN, TRANSACTION_FLAGGED,
-        ROLE_GRANTED, ROLE_REVOKED,
-        SYSTEM_PAUSED, SYSTEM_RESUMED,
-        INVOICE_REGISTERED, INVOICE_PAID
-    }
+    event AuditLogged(
+        bytes32 indexed entryId,
+        LibAppStorage.AuditEventType indexed eventType,
+        address indexed actor,
+        address subject,
+        bytes32 dataHash,
+        uint256 timestamp
+    );
 
-    struct AuditEntry {
-        bytes32 entryHash;        // keccak256 of entry data
-        bytes32 previousHash;     // Links to prior entry (chain)
-        AuditEventType eventType;
-        address actor;
-        address subject;
-        uint256 timestamp;
-        bytes32 dataHash;         // keccak256 of event-specific data
-    }
+    function logAudit(
+        LibAppStorage.AuditEventType eventType,
+        address subject,
+        bytes32 dataHash
+    ) external returns (bytes32 entryId);
 
-    event AuditEntryCreated(bytes32 indexed entryHash, bytes32 indexed previousHash, AuditEventType eventType, address actor, uint256 timestamp);
+    function verifyAuditChain(
+        bytes32 startEntry,
+        bytes32 endEntry
+    ) external view returns (bool isValid);
 
-    function createAuditEntry(AuditEventType eventType, address subject, bytes32 dataHash) external returns (bytes32 entryHash);
-    function getAuditEntry(bytes32 entryHash) external view returns (AuditEntry memory entry);
-    function getLatestAuditHash() external view returns (bytes32 latestHash);
-    function getTotalAuditEntries() external view returns (uint256 count);
-    function verifyAuditChain(bytes32 fromHash, bytes32 toHash) external view returns (bool valid);
+    function getAuditEntry(
+        bytes32 entryId
+    ) external view returns (LibAppStorage.AuditEntry memory entry);
+
+    function getEntityAuditTrail(
+        address entity,
+        LibAppStorage.AuditEventType eventType,
+        uint256 fromTimestamp,
+        uint256 toTimestamp
+    ) external view returns (LibAppStorage.AuditEntry[] memory entries);
+
+    function getLatestAuditHash() external view returns (bytes32 hash);
+
+    function getAuditStats(
+        LibAppStorage.AuditEventType eventType,
+        uint256 period
+    ) external view returns (uint256 count);
+
+    function logKYCEvent(
+        address entity,
+        LibAppStorage.AuditEventType eventType,
+        bytes32 dataHash
+    ) external;
+
+    function logAMLEvent(
+        address entity,
+        LibAppStorage.AuditEventType eventType,
+        bytes32 dataHash
+    ) external;
+
+    function logSanctionsEvent(
+        address entity,
+        LibAppStorage.AuditEventType eventType,
+        bytes32 dataHash
+    ) external;
 }
