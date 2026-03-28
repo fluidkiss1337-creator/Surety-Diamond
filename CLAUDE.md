@@ -15,7 +15,7 @@ The system provides on-chain compliance infrastructure: KYC, AML, sanctions scre
 ## Repository Layout
 
 ```
-Fluid-Innovation/
+Surety-Diamond/
 ├── fluid-compliance/           # Main Solidity project (Foundry)
 │   ├── src/
 │   │   ├── diamond/            # EIP-2535 Diamond proxy and init
@@ -38,7 +38,7 @@ Fluid-Innovation/
 | `src/diamond/DiamondInit.sol` | One-time initialization logic |
 | `src/libraries/LibAppStorage.sol` | Central shared storage struct for all facets |
 | `src/libraries/LibRoles.sol` | Role-based access control definitions |
-| `src/libraries/LibDiamond.sol` | EIP-2535 diamond mechanics (INCOMPLETE — has TODOs) |
+| `src/libraries/LibDiamond.sol` | EIP-2535 diamond mechanics (routing table, ownership) |
 | `src/facets/DiamondCutFacet.sol` | Facet management (add/replace/remove) with timelock |
 | `src/facets/DiamondLoupeFacet.sol` | Facet enumeration (EIP-2535 loupe interface) |
 
@@ -103,23 +103,9 @@ LibAppStorage (single storage slot)
 - **Git**
 - **Solidity** ^0.8.24
 
-### Missing Config (must be created before building)
+### Config Files
 
-The following files do not yet exist and are needed to compile:
-
-1. **`fluid-compliance/foundry.toml`** — Foundry project configuration
-2. **`fluid-compliance/remappings.txt`** — Solidity import remappings
-
-Minimal `foundry.toml`:
-```toml
-[profile.default]
-src = "src"
-out = "out"
-libs = ["lib"]
-solc = "0.8.24"
-optimizer = true
-optimizer_runs = 200
-```
+Both `fluid-compliance/foundry.toml` and `fluid-compliance/remappings.txt` exist and are configured. `forge build` and `forge test` run cleanly from `fluid-compliance/`.
 
 ### Build & Test Commands
 
@@ -221,38 +207,34 @@ The system targets these compliance frameworks:
 
 ---
 
-## Known Issues / Current State
+## Current State
 
-See `docs/Surety-current-state.md` for the full handoff document. Key gaps as of 2026-03-27:
+See `docs/Surety-current-state.md` for the full handoff document. As of 2026-03-28:
 
-### Blockers (must fix before `forge build`)
-1. **`LibDiamond.sol` is a stub** — needs full EIP-2535 diamond storage implementation
-2. **`foundry.toml` missing** — Foundry cannot find project config
-3. **`remappings.txt` missing** — imports will fail
+### Completed
+- `LibDiamond.sol` — full EIP-2535 implementation in place
+- `foundry.toml` + `remappings.txt` — configured, `forge build` passes
+- All 11 facets wired into `SuretyDiamond` constructor via `DiamondTestHelper`
+- `OracleFacet.sol` — fully implemented
+- Test suite — 114 tests passing across 11 facets + integration suite
+- Security remediations — all 14 findings (2 CRITICAL, 4 HIGH, 3 MEDIUM, 4 LOW) resolved on `security/remediation-v1`
 
-### Structural Cleanup
-4. **Loose `.sol` files in `fluid-compliance/` root** — old drafts that duplicate `src/` content; should be deleted
-5. **`SuretyDiamond.sol` not fully wired** — needs to register all 10 facets on deploy
-
-### Missing Components
-6. **`OracleFacet.sol`** — interface exists (`IOracleFacet.sol`) but implementation missing
-7. **Deployment script** — `script/Deploy.s.sol` needs to be created
-8. **Test suite** — `test/` directory is empty; target 90%+ coverage per spec
-9. **`fluid-compliance/README.md`** — project-level docs missing
+### Remaining
+1. **Deployment script** — `script/Deploy.s.sol` not yet created
+2. **Loose `.sol` files in `fluid-compliance/` root** — old drafts that duplicate `src/`; should be deleted
+3. **`fluid-compliance/README.md`** — project-level docs missing
+4. **Fuzzing tests** — risk scoring and invoice validation edge cases
+5. **`security/remediation-v1` → `main`** — security branch pending merge
 
 ---
 
 ## Priority Order for Next Work
 
-1. Fix `LibDiamond.sol` (complete EIP-2535 implementation)
-2. Create `foundry.toml` and `remappings.txt`
-3. Wire all facets into `SuretyDiamond` constructor/init
-4. Create `script/Deploy.s.sol`
-5. Implement `OracleFacet.sol`
-6. Write unit tests per facet (`test/*.t.sol`)
-7. Write integration tests for cross-facet flows
-8. Add fuzzing tests for risk scoring and invoice validation
-9. Clean up loose files in `fluid-compliance/` root
+1. Merge `security/remediation-v1` into `main`
+2. Create `script/Deploy.s.sol`
+3. Add fuzzing tests for risk scoring and invoice validation
+4. Clean up loose files in `fluid-compliance/` root
+5. Write `fluid-compliance/README.md`
 
 ---
 
@@ -260,6 +242,7 @@ See `docs/Surety-current-state.md` for the full handoff document. Key gaps as of
 
 - **Main branch:** `main`
 - **Remote:** `fluidkiss1337-creator/Surety-Diamond`
+- All completed work should be merged into `main`
 - Commit messages follow conventional commits: `feat:`, `fix:`, `docs:`, `test:`, `refactor:`
 - One logical change per commit
 - Never commit private keys or `.env` files
