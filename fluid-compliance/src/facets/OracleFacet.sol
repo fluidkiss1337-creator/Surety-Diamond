@@ -25,9 +25,7 @@ contract OracleFacet is IOracleFacet {
 
     error UnauthorizedOracle();
     error OracleAlreadyRegistered();
-    error InvalidDataType();
     error DataExpired();
-    error RequestNotFound();
     error InvalidSignature();
     error OracleLimitReached(uint8 dataType);
     error OracleNotRegistered();
@@ -184,14 +182,11 @@ contract OracleFacet is IOracleFacet {
     function getPendingRequests(
         LibAppStorage.OracleDataType dataType
     ) external view returns (LibAppStorage.OracleRequest[] memory requests) {
+        // TODO: Implement filtering by dataType — currently returns empty array regardless of input
         requests = new LibAppStorage.OracleRequest[](0);
     }
 
-    /// @notice Retrieve cached oracle data, reverting if the data has expired
-    /// @param dataType The type of oracle data to retrieve
-    /// @param dataKey The key identifying the specific data entry
-    /// @return data The cached bytes value
-    /// @return timestamp The block.timestamp at which the data was last updated
+    /// @inheritdoc IOracleFacet
     function getOracleData(
         LibAppStorage.OracleDataType dataType,
         bytes32 dataKey
