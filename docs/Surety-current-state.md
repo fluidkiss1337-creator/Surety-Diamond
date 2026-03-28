@@ -6,7 +6,7 @@
 
 ## Repository
 
-- **Repo:** `fluidkiss1337-creator/Fluid-Innovation` (private)
+- **Repo:** `fluidkiss1337-creator/Surety-Diamond` (public)
 - **Branch:** `main`
 - **Description:** Diamond Standard
 - **Standard:** EIP-2535 Diamond Proxy
@@ -17,7 +17,7 @@
 ## Root Structure
 
 ```
-Fluid-Innovation/
+Surety-Diamond/
 ├── fluid-compliance/          # Main project module
 │   ├── src/
 │   │   ├── diamond/           # Proxy + init contracts

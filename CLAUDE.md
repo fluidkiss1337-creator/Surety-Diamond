@@ -1,4 +1,4 @@
-# CLAUDE.md — AI Assistant Guide for Fluid-Innovation
+# CLAUDE.md — AI Assistant Guide for Surety-Diamond
 
 This file provides context for AI assistants (Claude and others) working in this repository.
 
@@ -6,7 +6,7 @@ This file provides context for AI assistants (Claude and others) working in this
 
 ## Project Overview
 
-**Fluid-Innovation / Surety** is a modular, upgradeable smart contract system implementing EIP-2535 Diamond Standard for financial compliance. It is designed for enterprise supply chain finance (SCF) platforms operating across multiple jurisdictions with high-volume payment flows.
+**Surety-Diamond** is a modular, upgradeable smart contract system implementing EIP-2535 Diamond Standard for financial compliance. It is designed for enterprise supply chain finance (SCF) platforms operating across multiple jurisdictions with high-volume payment flows.
 
 The system provides on-chain compliance infrastructure: KYC, AML, sanctions screening, invoice registry, FATCA/CRS reporting, multi-jurisdiction routing, and audit logging.
 
@@ -33,7 +33,7 @@ Fluid-Innovation/
 ### Key Source Files
 
 | File | Purpose |
-|------|---------|
+|------|--------|
 | `src/diamond/SuretyDiamond.sol` | Main EIP-2535 proxy with 48-hour upgrade timelock |
 | `src/diamond/DiamondInit.sol` | One-time initialization logic |
 | `src/libraries/LibAppStorage.sol` | Central shared storage struct for all facets |
@@ -159,7 +159,7 @@ No `.env` or `.env.example` file exists yet — create one before deploying.
 ### Naming
 
 | Item | Convention |
-|------|-----------|
+|------|----------|
 | Facets | `PascalCaseFacet` |
 | Interfaces | `IPascalCase` (I prefix) |
 | Libraries | `LibPascalCase` (Lib prefix) |
@@ -210,7 +210,7 @@ MIN_TIMELOCK = 48 hours
 The system targets these compliance frameworks:
 
 | Region | Frameworks |
-|--------|-----------|
+|--------|----------|
 | USA | BSA, USA PATRIOT Act §312/§319, OFAC, FATCA |
 | EU | MiCA, 6th AML Directive (6AMLD), GDPR |
 | Global | FATF Recommendations, UN Security Council sanctions, Basel III/IV |
@@ -259,7 +259,7 @@ See `docs/Surety-current-state.md` for the full handoff document. Key gaps as of
 ## Git Workflow
 
 - **Main branch:** `main`
-- **Remote:** `fluidkiss1337-creator/Fluid-Innovation`
+- **Remote:** `fluidkiss1337-creator/Surety-Diamond`
 - Commit messages follow conventional commits: `feat:`, `fix:`, `docs:`, `test:`, `refactor:`
 - One logical change per commit
 - Never commit private keys or `.env` files
