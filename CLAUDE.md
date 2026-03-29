@@ -209,7 +209,7 @@ The system targets these compliance frameworks:
 
 ## Current State
 
-As of 2026-03-28:
+As of 2026-03-29:
 
 ### Completed
 - All 11 facets implemented and wired into `SuretyDiamond` constructor via `DiamondTestHelper`
@@ -222,13 +222,14 @@ As of 2026-03-28:
 - Test suite — all tests passing across 11 facets + integration suite (CI verified)
 - Security remediations — all 14 findings (2 CRITICAL, 4 HIGH, 3 MEDIUM, 4 LOW) resolved and merged
 - `fluid-compliance/README.md` — technical reference and API docs
+- Fuzzing tests — `test/fuzz/FuzzAMLFacet.t.sol` and `test/fuzz/FuzzInvoiceRegistryFacet.t.sol`
+- Deploy.s.sol selector verification — `test/DeploySelectors.t.sol` validates all 77 selectors are routed
+- Stub function implementations — `getPendingRequests` (dataType filtering), `getFactoringStatus` (actual factor address), `getAuditStats` (eventType/period filtering)
+- Unused parameter logic — `narrative` stored in `sarNarratives`, `paymentReference` stored and emitted via `PaymentRecorded`, `reason`/`clearanceReason` stored in `sanctionsClearanceReasons`
+- SanctionsFacet event enrichment — `addToSanctionsList` and `removeFromSanctionsList` now accept `address entity` parameter, eliminating `address(0)` in events
 
 ### Remaining
-1. **Fuzzing tests** — risk scoring and invoice validation edge cases
-3. **Deploy.s.sol selector verification** — verify selector arrays against `forge inspect` output before mainnet use
-4. **Stub function implementations** — `OracleFacet.getPendingRequests` (filter by dataType), `InvoiceRegistryFacet.getFactoringStatus` (return actual factor address), `AuditFacet.getAuditStats` (filter by eventType/period)
-5. **Unused parameter logic** — implement storage/logging for: `narrative` in `AMLFacet.fileSAR`, `paymentReference` in `InvoiceRegistryFacet.recordPayment`, `reason`/`clearanceReason` in `SanctionsFacet`
-6. **SanctionsFacet event enrichment** — resolve `address(0)` in `addToSanctionsList` and `removeFromSanctionsList` event emissions (add entity address parameter or hash-indexed event variant)
+- None — all planned items complete. Ready for mainnet deployment preparation.
 
 ---
 

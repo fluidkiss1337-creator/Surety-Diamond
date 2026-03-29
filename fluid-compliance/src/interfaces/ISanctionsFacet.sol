@@ -41,14 +41,16 @@ interface ISanctionsFacet {
     function updateSanctionsList(LibAppStorage.SanctionsList listType, bytes32 newRoot, uint256 entryCount) external;
 
     /// @notice Add an entity to the sanctions records
+    /// @param entity Address of the entity being sanctioned
     /// @param entityHash Hash identifying the entity
     /// @param record Full sanction record to store
-    function addToSanctionsList(bytes32 entityHash, LibAppStorage.SanctionRecord calldata record) external;
+    function addToSanctionsList(address entity, bytes32 entityHash, LibAppStorage.SanctionRecord calldata record) external;
 
     /// @notice Remove an entity from the sanctions records
+    /// @param entity Address of the entity being removed
     /// @param entityHash Hash identifying the entity to remove
     /// @param reason Justification for removal
-    function removeFromSanctionsList(bytes32 entityHash, string calldata reason) external;
+    function removeFromSanctionsList(address entity, bytes32 entityHash, string calldata reason) external;
 
     /// @notice Clear a false positive sanctions match for an entity
     /// @param entity Address of the entity to clear

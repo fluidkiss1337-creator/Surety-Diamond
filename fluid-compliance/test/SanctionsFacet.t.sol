@@ -39,7 +39,7 @@ contract SanctionsFacetTest is DiamondTestHelper {
         });
 
         vm.prank(sanctionsMgr);
-        sanctions().addToSanctionsList(ENTITY_HASH, record);
+        sanctions().addToSanctionsList(seller, ENTITY_HASH, record);
 
         vm.prank(officer);
         ISanctionsFacetTestHelper.ScreeningResult memory result = ISanctionsFacetTestHelper(diamond).screenEntity(
@@ -57,7 +57,7 @@ contract SanctionsFacetTest is DiamondTestHelper {
         _addSanctionedEntity(ENTITY_HASH);
 
         vm.prank(sanctionsMgr);
-        sanctions().removeFromSanctionsList(ENTITY_HASH, "False positive");
+        sanctions().removeFromSanctionsList(seller, ENTITY_HASH, "False positive");
 
         LibAppStorage.SanctionRecord memory record = sanctions().getSanctionRecord(ENTITY_HASH);
         assertFalse(record.isActive);
@@ -136,7 +136,7 @@ contract SanctionsFacetTest is DiamondTestHelper {
             isActive: true
         });
         vm.prank(sanctionsMgr);
-        sanctions().addToSanctionsList(entityHash, record);
+        sanctions().addToSanctionsList(address(0), entityHash, record);
     }
 }
 

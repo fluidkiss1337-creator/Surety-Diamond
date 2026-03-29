@@ -104,29 +104,27 @@ contract SanctionsFacet is ISanctionsFacet {
 
     /// @inheritdoc ISanctionsFacet
     function addToSanctionsList(
+        address entity,
         bytes32 entityHash,
         LibAppStorage.SanctionRecord calldata record
     ) external whenNotPaused onlySanctionsManager {
         LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
         s.sanctionedEntities[entityHash] = true;
         s.sanctionDetails[entityHash] = record;
-        // NOTE: address(0) is emitted because this function operates on entityHash only.
-        // TODO: Add entity address parameter or emit a hash-indexed event variant.
-        emit SanctionsMatchFound(address(0), record.lists, entityHash, block.timestamp);
+        emit SanctionsMatchFound(entity, record.lists, entityHash, block.timestamp);
     }
 
     /// @inheritdoc ISanctionsFacet
     function removeFromSanctionsList(
+        address entity,
         bytes32 entityHash,
         string calldata reason
     ) external whenNotPaused onlySanctionsManager {
         LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
         s.sanctionedEntities[entityHash] = false;
         delete s.sanctionDetails[entityHash];
-        // TODO: Store reason in audit trail — currently unused
-        // NOTE: address(0) is emitted because this function operates on entityHash only.
-        // TODO: Add entity address parameter or emit a hash-indexed event variant.
-        emit EntityCleared(address(0), block.timestamp, msg.sender);
+        s.sanctionsClearanceReasons[entityHash] = reason;
+        emit EntityCleared(entity, block.timestamp, msg.sender);
     }
 
     /// @inheritdoc ISanctionsFacet
@@ -135,10 +133,10 @@ contract SanctionsFacet is ISanctionsFacet {
         bytes32 identityHash,
         string calldata clearanceReason
     ) external whenNotPaused onlySanctionsManager {
-        // TODO: Store clearanceReason in audit trail — currently unused
         LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
         s.sanctionedEntities[identityHash] = false;
         delete s.sanctionDetails[identityHash];
+        s.sanctionsClearanceReasons[identityHash] = clearanceReason;
         emit EntityCleared(entity, block.timestamp, msg.sender);
     }
 

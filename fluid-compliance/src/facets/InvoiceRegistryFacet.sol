@@ -152,6 +152,20 @@ contract InvoiceRegistryFacet is IInvoiceRegistryFacet {
         agreementId = keccak256(abi.encodePacked(invoiceHash, factor, advanceAmount, block.timestamp));
         invoice.status = LibAppStorage.InvoiceStatus.FACTORED;
 
+        s.factoringRecords[invoiceHash] = LibAppStorage.FactoringRecord({
+            agreementId: agreementId,
+            invoiceHash: invoiceHash,
+            factor: factor,
+            seller: invoice.seller,
+            advanceAmount: advanceAmount,
+            advanceRate: advanceRate,
+            feeRate: feeRate,
+            agreementDate: block.timestamp,
+            expectedSettlement: invoice.dueDate,
+            status: LibAppStorage.FactoringStatus.ACTIVE
+        });
+        s.invoiceToAgreement[invoiceHash] = agreementId;
+
         emit InvoiceFactored(invoiceHash, agreementId, factor, advanceAmount);
         emit InvoiceStatusChanged(invoiceHash, LibAppStorage.InvoiceStatus.VERIFIED, LibAppStorage.InvoiceStatus.FACTORED);
         return agreementId;
@@ -173,7 +187,8 @@ contract InvoiceRegistryFacet is IInvoiceRegistryFacet {
         } else {
             invoice.status = LibAppStorage.InvoiceStatus.PARTIALLY_PAID;
         }
-        // TODO: Store paymentReference for off-chain payment tracking
+        s.paymentReferences[invoiceHash] = paymentReference;
+        emit PaymentRecorded(invoiceHash, paymentAmount, paymentReference);
         emit InvoiceStatusChanged(invoiceHash, prev, invoice.status);
     }
 
@@ -209,8 +224,7 @@ contract InvoiceRegistryFacet is IInvoiceRegistryFacet {
         LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
         LibAppStorage.InvoiceRecord memory invoice = s.invoices[invoiceHash];
         isFactored = invoice.status == LibAppStorage.InvoiceStatus.FACTORED;
-        // TODO: Retrieve actual factor address from FactoringRecord instead of returning address(0)
-        factor = address(0);
+        factor = s.factoringRecords[invoiceHash].factor;
     }
 
     /// @inheritdoc IInvoiceRegistryFacet

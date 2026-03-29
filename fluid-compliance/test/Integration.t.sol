@@ -153,7 +153,7 @@ contract IntegrationTest is DiamondTestHelper {
         LibAppStorage.SanctionsList[] memory lists = new LibAppStorage.SanctionsList[](1);
         lists[0] = LibAppStorage.SanctionsList.OFAC_SDN;
         vm.prank(sanctionsMgr);
-        sanctions().addToSanctionsList(sellerIdHash, LibAppStorage.SanctionRecord({
+        sanctions().addToSanctionsList(seller, sellerIdHash, LibAppStorage.SanctionRecord({
             entityHash: sellerIdHash,
             lists: lists,
             listingDate: block.timestamp,

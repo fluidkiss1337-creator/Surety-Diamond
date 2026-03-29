@@ -117,8 +117,15 @@ contract AuditFacet is IAuditFacet {
         LibAppStorage.AuditEventType eventType,
         uint256 period
     ) external view returns (uint256 count) {
-        // TODO: Implement filtering by eventType and period — currently returns total entries unfiltered
-        count = LibAppStorage.appStorage().totalAuditEntries;
+        LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
+        bytes32[] storage ids = s.auditEntryIdsByType[uint8(eventType)];
+        uint256 cutoff = period > block.timestamp ? 0 : block.timestamp - period;
+
+        for (uint256 i = 0; i < ids.length; i++) {
+            if (s.auditEntries[ids[i]].timestamp >= cutoff) {
+                count++;
+            }
+        }
     }
 
     // ============================================================
@@ -196,6 +203,7 @@ contract AuditFacet is IAuditFacet {
             previousEntryHash: previousHash
         });
         s.entityAuditIds[subject].push(entryId);
+        s.auditEntryIdsByType[uint8(eventType)].push(entryId);
 
         emit AuditLogged(entryId, eventType, msg.sender, subject, dataHash, block.timestamp);
         return entryId;
