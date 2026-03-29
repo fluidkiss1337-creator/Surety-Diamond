@@ -20,13 +20,16 @@ contract FuzzInvoiceRegistryFacetTest is DiamondTestHelper {
     }
 
     // ============================================================
-    // registerInvoice — amount bounds
+    // registerInvoice - amount bounds
     // ============================================================
 
     function testFuzz_registerInvoice_amountBounds(uint256 amount) public {
         if (amount == 0 || amount > MAX_INVOICE_AMOUNT) {
-            // vm.prank is NOT set here — _tryRegisterInvoice sets it internally
-            // immediately before the contract call, preventing double-prank conflict.
+            LibAppStorage.InvoiceRecord memory inv = _buildInvoice(seller, buyer, amount);
+            bytes32 invHash = keccak256(abi.encodePacked(
+                inv.seller, inv.buyer, inv.amount, inv.currency, inv.issueDate, inv.dueDate, inv.purchaseOrderRef
+            ));
+            bytes memory sig = _buildSellerSig(sellerPk, invHash);
             vm.expectRevert();
             _tryRegisterInvoice(amount);
         } else {
@@ -37,7 +40,7 @@ contract FuzzInvoiceRegistryFacetTest is DiamondTestHelper {
     }
 
     // ============================================================
-    // createFactoringAgreement — advance rate bounds
+    // createFactoringAgreement - advance rate bounds
     // ============================================================
 
     function testFuzz_createFactoringAgreement_advanceRate(uint256 rate) public {
@@ -55,7 +58,7 @@ contract FuzzInvoiceRegistryFacetTest is DiamondTestHelper {
     }
 
     // ============================================================
-    // recordPayment — status transitions
+    // recordPayment - status transitions
     // ============================================================
 
     function testFuzz_recordPayment_statusTransition(uint256 paymentAmount) public {
@@ -98,13 +101,13 @@ contract FuzzInvoiceRegistryFacetTest is DiamondTestHelper {
         invoice().verifyInvoice(invoiceHash, buyerSig);
     }
 
-    function _buildSellerSig(uint256 pk, bytes32 hash) internal pure returns (bytes memory) {
+    function _buildSellerSig(uint256 pk, bytes32 hash) internal view returns (bytes memory) {
         bytes32 prefixed = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
         (uint8 v, bytes32 r, bytes32 s_) = vm.sign(pk, prefixed);
         return abi.encodePacked(r, s_, v);
     }
 
-    function _buildBuyerSig(uint256 pk, bytes32 hash) internal pure returns (bytes memory) {
+    function _buildBuyerSig(uint256 pk, bytes32 hash) internal view returns (bytes memory) {
         return _buildSellerSig(pk, hash);
     }
 }
