@@ -406,6 +406,26 @@ library LibAppStorage {
 
         // ===== Oracle Per-Type Counts =====
         mapping(uint8 => uint256) oracleTypeCount;
+
+        // ===== Factoring Records =====
+        mapping(bytes32 => FactoringRecord) factoringRecords;
+        mapping(bytes32 => bytes32) invoiceToAgreement;
+
+        // ===== SAR Records =====
+        mapping(bytes32 => string) sarNarratives;
+
+        // ===== Invoice Payment References =====
+        mapping(bytes32 => bytes32) paymentReferences;
+
+        // ===== Sanctions Clearance Reasons =====
+        mapping(bytes32 => string) sanctionsClearanceReasons;
+
+        // ===== Oracle Request Tracking =====
+        bytes32[] oracleRequestIds;
+        mapping(uint8 => bytes32[]) oracleRequestIdsByType;
+
+        // ===== Audit Per-Type Tracking =====
+        mapping(uint8 => bytes32[]) auditEntryIdsByType;
     }
 
     // ============================================================

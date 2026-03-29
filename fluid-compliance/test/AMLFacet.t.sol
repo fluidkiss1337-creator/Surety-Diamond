@@ -60,7 +60,7 @@ contract AMLFacetTest is DiamondTestHelper {
         vm.prank(analyst); aml().setEntityRiskScore(buyer,  1000, "pre-set");
 
         vm.expectEmit(false, true, false, false, diamond);
-        emit IAMLFacetTestHelper.SARFiled(bytes32(0), seller, 0, 0);
+        emit IAMLFacetTestHelper.SARFiled(bytes32(0), seller, 0, "", 0);
 
         vm.prank(analyst);
         aml().assessTransaction(
@@ -145,5 +145,5 @@ contract AMLFacetTest is DiamondTestHelper {
 
 // Minimal event definition helper to use vm.expectEmit
 interface IAMLFacetTestHelper {
-    event SARFiled(bytes32 indexed transactionId, address indexed entity, uint256 riskScore, uint256 timestamp);
+    event SARFiled(bytes32 indexed transactionId, address indexed entity, uint256 riskScore, string narrative, uint256 timestamp);
 }

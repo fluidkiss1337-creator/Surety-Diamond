@@ -156,6 +156,9 @@ contract OracleFacet is IOracleFacet {
             fulfilled: false
         });
 
+        s.oracleRequestIds.push(requestId);
+        s.oracleRequestIdsByType[uint8(dataType)].push(requestId);
+
         emit OracleDataUpdated(requestId, dataType, dataKey, msg.sender, block.timestamp);
         return requestId;
     }
@@ -182,8 +185,25 @@ contract OracleFacet is IOracleFacet {
     function getPendingRequests(
         LibAppStorage.OracleDataType dataType
     ) external view returns (LibAppStorage.OracleRequest[] memory requests) {
-        // TODO: Implement filtering by dataType — currently returns empty array regardless of input
-        requests = new LibAppStorage.OracleRequest[](0);
+        LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
+        bytes32[] storage ids = s.oracleRequestIdsByType[uint8(dataType)];
+
+        uint256 count = 0;
+        for (uint256 i = 0; i < ids.length; i++) {
+            LibAppStorage.OracleRequest storage req = s.oracleRequests[ids[i]];
+            if (!req.fulfilled && req.expirationTimestamp > block.timestamp) {
+                count++;
+            }
+        }
+
+        requests = new LibAppStorage.OracleRequest[](count);
+        uint256 idx = 0;
+        for (uint256 i = 0; i < ids.length; i++) {
+            LibAppStorage.OracleRequest storage req = s.oracleRequests[ids[i]];
+            if (!req.fulfilled && req.expirationTimestamp > block.timestamp) {
+                requests[idx++] = req;
+            }
+        }
     }
 
     /// @inheritdoc IOracleFacet

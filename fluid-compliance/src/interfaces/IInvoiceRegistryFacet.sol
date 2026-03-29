@@ -11,6 +11,7 @@ interface IInvoiceRegistryFacet {
     event InvoiceStatusChanged(bytes32 indexed invoiceHash, LibAppStorage.InvoiceStatus previousStatus, LibAppStorage.InvoiceStatus newStatus);
     event DoubleFactoringAttempt(bytes32 indexed invoiceHash, address indexed attacker, address existingFactor, uint256 timestamp);
     event InvoiceFactored(bytes32 indexed invoiceHash, bytes32 indexed agreementId, address indexed factor, uint256 advanceAmount);
+    event PaymentRecorded(bytes32 indexed invoiceHash, uint256 paymentAmount, bytes32 paymentReference);
 
     /// @notice Register a new invoice on-chain with seller signature verification
     /// @param invoice The invoice record to register

@@ -7,7 +7,7 @@ import {LibAppStorage} from "../libraries/LibAppStorage.sol";
 /// @notice Interface for Anti-Money Laundering risk scoring and transaction monitoring
 interface IAMLFacet {
 
-    event SARFiled(bytes32 indexed transactionId, address indexed entity, uint256 riskScore, uint256 timestamp);
+    event SARFiled(bytes32 indexed transactionId, address indexed entity, uint256 riskScore, string narrative, uint256 timestamp);
     event TransactionAssessed(bytes32 indexed transactionId, address indexed from, address indexed to, uint256 amount, uint256 riskScore, bool canProceed);
     event RiskScoreUpdated(address indexed entity, uint256 newScore, address indexed updatedBy, string rationale);
     event SuspiciousActivityFlagged(address indexed entity, bytes32 indexed transactionId, string reason, uint256 timestamp);

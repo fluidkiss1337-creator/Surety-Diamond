@@ -100,7 +100,7 @@ contract AMLFacet is IAMLFacet {
 
         // Auto-file SAR for high-risk large transactions
         if (riskPoints >= HIGH_RISK_THRESHOLD && amount >= SAR_FILING_THRESHOLD) {
-            emit SARFiled(transactionId, from, riskPoints, block.timestamp);
+            emit SARFiled(transactionId, from, riskPoints, "", block.timestamp);
         }
 
         emit TransactionAssessed(
@@ -152,8 +152,9 @@ contract AMLFacet is IAMLFacet {
         uint256 riskScore,
         string calldata narrative
     ) external whenNotPaused onlyComplianceOfficer {
-        // TODO: Store narrative in SAR record — currently only emitted via event fields
-        emit SARFiled(transactionId, entity, riskScore, block.timestamp);
+        LibAppStorage.AppStorage storage s = LibAppStorage.appStorage();
+        s.sarNarratives[transactionId] = narrative;
+        emit SARFiled(transactionId, entity, riskScore, narrative, block.timestamp);
     }
 
     // ============ View Functions ============
