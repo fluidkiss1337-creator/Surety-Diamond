@@ -28,7 +28,8 @@ contract FuzzInvoiceRegistryFacetTest is DiamondTestHelper {
             // vm.prank is NOT set here — _tryRegisterInvoice sets it internally
             // immediately before the contract call, preventing double-prank conflict.
             vm.expectRevert();
-            _tryRegisterInvoice(amount);
+            vm.prank(seller);
+            invoice().registerInvoice(inv, sig);
         } else {
             bytes32 invoiceHash = _tryRegisterInvoice(amount);
             LibAppStorage.InvoiceRecord memory rec = invoice().getInvoice(invoiceHash);
