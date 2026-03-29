@@ -25,7 +25,8 @@ contract FuzzInvoiceRegistryFacetTest is DiamondTestHelper {
 
     function testFuzz_registerInvoice_amountBounds(uint256 amount) public {
         if (amount == 0 || amount > MAX_INVOICE_AMOUNT) {
-            vm.prank(seller);
+            // vm.prank is NOT set here — _tryRegisterInvoice sets it internally
+            // immediately before the contract call, preventing double-prank conflict.
             vm.expectRevert();
             _tryRegisterInvoice(amount);
         } else {
