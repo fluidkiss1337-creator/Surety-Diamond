@@ -1,4 +1,4 @@
-# Surety by FKC
+# Surety by Fluid Kiss Consultations
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.24-blue.svg)](https://soliditylang.org)
