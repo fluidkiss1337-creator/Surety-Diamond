@@ -1,0 +1,5 @@
+Surety by Fluid Kiss Consultations — EIP-2535 Diamond compliance infrastructure
+for enterprise supply chain finance (KYC, AML, sanctions, FATCA/CRS,
+double-factoring prevention). 175/175 Foundry tests. Deployed + verified on OP
+Sepolia. Gas snapshot comparable to best practices. MIT. Looking for architectural
+review.
