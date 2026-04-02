@@ -298,16 +298,16 @@ Supported constructs: 5 KYC levels (NONE through INSTITUTIONAL), 5 sanctions lis
 
 ### Gaps & Recommendations
 
-| # | Item | Priority | Notes |
-|---|------|----------|-------|
-| 1 | Missing event in `FATCACRSFacet.markAsReported()` | High | Only state-changing function without event emission |
-| 2 | No `forge coverage` baseline documented | Medium | Should capture and track coverage metrics pre-mainnet |
-| 3 | No formal invariant tests | Medium | `foundry.toml` configures invariant runs but no `invariant_*` functions exist |
-| 4 | SecurityGuardFacet incident queries iterate linearly | Low | Pagination needed at scale |
-| 5 | No `.solhint` or linting config | Low | Conventions followed manually; automated enforcement would strengthen CI |
-| 6 | No multi-chain deployment config | Low | Only Optimism Sepolia testnet referenced |
-| 7 | Reverted RoleManagerFacet commit in history | Low | Abandoned feature branch worth cleaning up |
-| 8 | Storage packing optimization possible | Low | `systemPaused` + `treasuryAddress` could share a slot (~2,000 gas savings) |
+| # | Item | Priority | Status | Notes |
+|---|------|----------|--------|-------|
+| 1 | ~~Missing event in `FATCACRSFacet.markAsReported()`~~ | High | **Resolved** | Added `ReportingObligationFulfilled` event + test |
+| 2 | No `forge coverage` baseline documented | Medium | Open | Should capture and track coverage metrics pre-mainnet |
+| 3 | No formal invariant tests | Medium | Open | `foundry.toml` configures invariant runs but no `invariant_*` functions exist |
+| 4 | SecurityGuardFacet incident queries iterate linearly | Low | Open | Pagination needed at scale |
+| 5 | ~~No `.solhint` or linting config~~ | Low | **Resolved** | Added `.solhint.json` + CI lint job |
+| 6 | No multi-chain deployment config | Low | Open | Only Optimism Sepolia testnet referenced |
+| 7 | Reverted RoleManagerFacet commit in history | Low | Open | Abandoned feature branch worth cleaning up |
+| 8 | Storage packing optimization possible | Low | Open | `systemPaused` + `treasuryAddress` could share a slot (~2,000 gas savings) |
 
 ---
 
@@ -322,7 +322,7 @@ Surety-Diamond demonstrates enterprise-grade smart contract architecture across 
 - **Compliance**: Real-world regulatory frameworks mapped to on-chain enforcement logic
 - **Documentation**: 85+ KB of audience-targeted documentation from executive overview to API reference
 
-One high-priority fix (missing event emission) and a handful of low-priority improvements remain. The system is otherwise ready for mainnet deployment preparation.
+The high-priority finding (missing event emission) has been resolved. Solhint linting has been added to CI. Six open items remain (2 medium, 4 low). The system is ready for mainnet deployment preparation.
 
 ---
 
